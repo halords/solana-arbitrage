@@ -53,9 +53,11 @@ export default function DashboardPage(): JSX.Element {
 
   const fetchLiveStatus = async (): Promise<void> => {
     try {
-      const res = await fetch('http://localhost:3000/api/v1/health');
+      const res = await window.fetch('http://localhost:3000/api/v1/health');
       if (res.ok) {
-        const data = await res.json();
+        const data = await res.json() as {
+          solana?: { latencyMs?: number; currentSlot?: string; cluster?: string };
+        };
         setMetrics((prev) => ({
           ...prev,
           latencyMs: data.solana?.latencyMs || prev.latencyMs,
@@ -68,18 +70,18 @@ export default function DashboardPage(): JSX.Element {
     }
   };
 
-  useEffect(() => {
+  useEffect((): (() => void) => {
     void fetchLiveStatus();
     const interval = setInterval(() => {
       void fetchLiveStatus();
     }, 1000);
-    return () => clearInterval(interval);
+    return (): void => clearInterval(interval);
   }, []);
 
   const handleKillSwitch = async (): Promise<void> => {
     if (confirm('Are you sure you want to trigger the EMERGENCY KILL-SWITCH?')) {
       try {
-        await fetch('http://localhost:3000/api/v1/system/kill-switch', { method: 'POST' });
+        await window.fetch('http://localhost:3000/api/v1/system/kill-switch', { method: 'POST' });
       } catch {
         // Fallback local toggle
       }
