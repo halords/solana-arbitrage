@@ -31,6 +31,16 @@ export const EnvSchema = z.object({
   DEVNET_KEYPAIR_PATH: z.string().optional(),
   MIN_DEVNET_SOL: z.coerce.number().default(0.5),
 
+  MAINNET_KEYPAIR_PATH: z.string().optional(),
+  MAINNET_RPC_URL: z.string().url().default('https://api.mainnet-beta.solana.com'),
+  MAINNET_WS_URL: z.string().default('wss://api.mainnet-beta.solana.com/'),
+  COLD_STORAGE_ADDRESS: z.string().optional(),
+  MAX_CONSECUTIVE_LOSSES: z.coerce.number().default(5),
+
+  JITO_ENABLED: z.coerce.boolean().default(false),
+  JITO_BLOCK_ENGINE_URL: z.string().url().default('https://mainnet.block-engine.jito.wtf/api/v1/bundles'),
+  JITO_TIP_LAMPORTS: z.coerce.number().default(10000), // 10,000 lamports default tip (0.00001 SOL)
+
   INITIAL_CAPITAL_USD: z.coerce.number().default(10.0),
   MIN_PROFIT_USD: z.coerce.number().default(0.01),
   MIN_ROI_PERCENT: z.coerce.number().default(0.05),

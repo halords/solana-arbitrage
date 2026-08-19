@@ -24,6 +24,10 @@ interface LiveMetrics {
   currentSlot: string;
   cluster: string;
   tradingMode: string;
+  walletBalanceSol?: number | undefined;
+  walletAddress?: string | undefined;
+  circuitBreakerTripped?: boolean | undefined;
+  circuitBreakerReason?: string | undefined;
   opportunities: Array<{
     pair: string;
     buyDex: string;
@@ -53,12 +57,43 @@ export default function DashboardPage(): JSX.Element {
 
   const fetchLiveStatus = async (): Promise<void> => {
     try {
-      const [healthRes, statusRes, perfRes, oppsRes] = await Promise.allSettled([
+      const [healthRes, statusRes, perfRes, oppsRes, walletRes, cbRes] = await Promise.allSettled([
         window.fetch('http://localhost:3000/api/v1/health'),
         window.fetch('http://localhost:3000/api/v1/system/status'),
         window.fetch('http://localhost:3000/api/v1/performance'),
         window.fetch('http://localhost:3000/api/v1/opportunities?limit=5'),
+        window.fetch('http://localhost:3000/api/v1/wallet/balance'),
+        window.fetch('http://localhost:3000/api/v1/wallet/circuit-breaker'),
       ]);
+
+      if (walletRes.status === 'fulfilled' && walletRes.value.ok) {
+        const walletData = await walletRes.value.json() as {
+          available?: boolean;
+          address?: string;
+          sol?: number;
+        };
+        if (walletData.available) {
+          setMetrics((prev) => ({
+            ...prev,
+            walletBalanceSol: walletData.sol,
+            walletAddress: walletData.address,
+          }));
+        }
+      }
+
+      if (cbRes.status === 'fulfilled' && cbRes.value.ok) {
+        const cbData = await cbRes.value.json() as {
+          available?: boolean;
+          state?: { isTripped: boolean; tripReason?: string };
+        };
+        if (cbData.available && cbData.state) {
+          setMetrics((prev) => ({
+            ...prev,
+            circuitBreakerTripped: cbData.state?.isTripped,
+            circuitBreakerReason: cbData.state?.tripReason,
+          }));
+        }
+      }
 
       if (healthRes.status === 'fulfilled' && healthRes.value.ok) {
         const healthData = await healthRes.value.json() as {

@@ -42,6 +42,18 @@ export class ComputeBudgetManager {
   }
 
   /**
+   * Estimates dynamic priority fee from recent fee percentiles
+   */
+  public calculateDynamicPriorityFee(recentFees: number[], multiplier = 1.2): bigint {
+    if (!recentFees || recentFees.length === 0) {
+      return BigInt(50_000); // 50,000 micro-lamports default
+    }
+    const sorted = [...recentFees].sort((a, b) => a - b);
+    const median = sorted[Math.floor(sorted.length / 2)] ?? 50_000;
+    return BigInt(Math.max(Math.floor(median * multiplier), 10_000));
+  }
+
+  /**
    * Builds the full compute budget instruction set to prepend to versioned transactions
    */
   public buildComputeBudgetInstructions(config?: ComputeBudgetConfig): IInstruction[] {
@@ -54,3 +66,4 @@ export class ComputeBudgetManager {
     ];
   }
 }
+

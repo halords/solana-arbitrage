@@ -3,12 +3,14 @@ import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import { AppConfig } from '@solana-arbitrage/config';
 import { PrismaClient, RedisRepository } from '@solana-arbitrage/database';
-import { SolanaHealthMonitor } from '@solana-arbitrage/solana';
+import { SolanaHealthMonitor, MainnetWalletManager, CircuitBreaker, EmergencyDrainService } from '@solana-arbitrage/solana';
 import { LatencyProfiler, ArbitrageDetector } from '@solana-arbitrage/arbitrage-engine';
 import { healthRoutes } from './routes/health.js';
 import { marketRoutes } from './routes/market.js';
 import { opportunityRoutes } from './routes/opportunities.js';
 import { systemRoutes } from './routes/system.js';
+import { walletRoutes } from './routes/wallet.js';
+import { Rpc, SolanaRpcApi } from '@solana/kit';
 
 export interface BuildServerOptions {
   config: AppConfig;
@@ -17,6 +19,10 @@ export interface BuildServerOptions {
   solanaMonitor: SolanaHealthMonitor;
   profiler?: LatencyProfiler;
   detector?: ArbitrageDetector;
+  walletManager?: MainnetWalletManager;
+  circuitBreaker?: CircuitBreaker;
+  drainService?: EmergencyDrainService;
+  mainnetRpc?: Rpc<SolanaRpcApi>;
 }
 
 export function buildServer(options: BuildServerOptions): FastifyInstance {
@@ -55,6 +61,14 @@ export function buildServer(options: BuildServerOptions): FastifyInstance {
         config: options.config,
         profiler: options.profiler,
         detector: options.detector,
+      });
+
+      void v1.register(walletRoutes, {
+        config: options.config,
+        walletManager: options.walletManager,
+        circuitBreaker: options.circuitBreaker,
+        drainService: options.drainService,
+        rpc: options.mainnetRpc,
       });
     },
     { prefix: '/api/v1' }
