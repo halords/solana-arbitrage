@@ -176,6 +176,7 @@ async function main(): Promise<void> {
     redis: redisRepo,
     solanaMonitor,
     profiler,
+    detector,
   });
 
   const port = config.APP_PORT || 3000;

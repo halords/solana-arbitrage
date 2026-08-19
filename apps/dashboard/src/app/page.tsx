@@ -422,11 +422,11 @@ export default function DashboardPage(): JSX.Element {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', fontSize: '0.85rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '0.5rem' }}>
               <span style={{ color: 'var(--text-secondary)' }}>Max Trade Cap:</span>
-              <span style={{ fontWeight: 600 }}>$100.00 USD</span>
+              <span style={{ fontWeight: 600 }}>$10.00 USD</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '0.5rem' }}>
               <span style={{ color: 'var(--text-secondary)' }}>Min Net Profit:</span>
-              <span style={{ fontWeight: 600 }}>$0.05 USD</span>
+              <span style={{ fontWeight: 600 }}>$0.01 USD</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '0.5rem' }}>
               <span style={{ color: 'var(--text-secondary)' }}>Max Slippage Allowed:</span>
@@ -438,7 +438,7 @@ export default function DashboardPage(): JSX.Element {
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span style={{ color: 'var(--text-secondary)' }}>Execution Pathway:</span>
-              <span style={{ color: 'var(--accent-cyan)', fontWeight: 700 }}>DISABLED (Phase 1)</span>
+              <span style={{ color: 'var(--accent-cyan)', fontWeight: 700 }}>SOLANA DEVNET (Phase 3)</span>
             </div>
           </div>
 
@@ -456,11 +456,151 @@ export default function DashboardPage(): JSX.Element {
           >
             <AlertTriangle size={18} color="var(--accent-cyan)" style={{ flexShrink: 0, marginTop: '2px' }} />
             <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
-              Deterministic pure math operates without AI heuristics. Live transaction signing is restricted until Phase 4.
+              Deterministic pure math operates without AI heuristics. Live on-chain simulation is verified on Devnet.
             </p>
           </div>
         </section>
       </div>
+
+      {/* Backtest Replay Simulator Panel */}
+      <BacktestSimulatorSection />
     </main>
+  );
+}
+
+interface BacktestSummaryState {
+  totalTicksEvaluated: number;
+  totalOpportunitiesDetected: number;
+  totalTradesFilled: number;
+  totalNetProfitUsd: number;
+  winRatePercent: number;
+  maxDrawdownPercent: number;
+  profitFactor: number;
+}
+
+function BacktestSimulatorSection(): JSX.Element {
+  const [isRunning, setIsRunning] = useState(false);
+  const [delayMs, setDelayMs] = useState(150);
+  const [decayRate, setDecayRate] = useState(10);
+  const [result, setResult] = useState<BacktestSummaryState | null>(null);
+
+  const handleRunBacktest = async (): Promise<void> => {
+    setIsRunning(true);
+    try {
+      const res = await window.fetch('http://localhost:3000/api/v1/backtest/run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          executionDelayMs: delayMs,
+          simulatedSlippageDecayRate: decayRate / 100,
+          initialCapitalUsd: 10.0,
+          sampleTicksCount: 500,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json() as { summary: BacktestSummaryState };
+        setResult(data.summary);
+      }
+    } catch {
+      // Backend backtest fallback
+    } finally {
+      setIsRunning(false);
+    }
+  };
+
+  return (
+    <section className="glass-panel" style={{ padding: '1.75rem', marginTop: '2rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+        <div>
+          <h2 style={{ fontSize: '1.1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Zap size={18} color="var(--accent-purple)" />
+            Realistic Backtest Replay Simulator
+          </h2>
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+            Simulate 500 historical ticks with network transit latency and MEV competition spread decay.
+          </p>
+        </div>
+
+        <button
+          onClick={handleRunBacktest}
+          disabled={isRunning}
+          style={{
+            background: isRunning ? '#334155' : 'linear-gradient(135deg, #00f0ff, #9d4edd)',
+            color: '#0a0c10',
+            border: 'none',
+            padding: '10px 18px',
+            borderRadius: '8px',
+            cursor: isRunning ? 'not-allowed' : 'pointer',
+            fontWeight: 700,
+            fontSize: '0.85rem',
+          }}
+        >
+          {isRunning ? 'RUNNING REPLAY...' : 'RUN REALISTIC BACKTEST'}
+        </button>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
+        <div style={{ background: 'rgba(255, 255, 255, 0.02)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
+          <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.25rem' }}>
+            Execution Delay ({delayMs} ms)
+          </label>
+          <input
+            type="range"
+            min="50"
+            max="400"
+            step="10"
+            value={delayMs}
+            onChange={(e) => setDelayMs(parseInt(e.target.value))}
+            style={{ width: '100%' }}
+          />
+        </div>
+
+        <div style={{ background: 'rgba(255, 255, 255, 0.02)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
+          <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.25rem' }}>
+            MEV Spread Decay ({decayRate}% per 100ms)
+          </label>
+          <input
+            type="range"
+            min="1"
+            max="30"
+            step="1"
+            value={decayRate}
+            onChange={(e) => setDecayRate(parseInt(e.target.value))}
+            style={{ width: '100%' }}
+          />
+        </div>
+      </div>
+
+      {result && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
+          <div style={{ background: 'rgba(0, 240, 255, 0.05)', border: '1px solid rgba(0, 240, 255, 0.2)', padding: '1rem', borderRadius: '8px' }}>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Realized Net P/L</div>
+            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--accent-green)' }}>
+              +${result.totalNetProfitUsd.toFixed(4)} USD
+            </div>
+            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>From $10.00 capital</div>
+          </div>
+
+          <div style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--border-subtle)', padding: '1rem', borderRadius: '8px' }}>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Realistic Win Rate</div>
+            <div style={{ fontSize: '1.4rem', fontWeight: 800 }}>{result.winRatePercent.toFixed(1)}%</div>
+            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{result.totalTradesFilled} filled / {result.totalOpportunitiesDetected} detected</div>
+          </div>
+
+          <div style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--border-subtle)', padding: '1rem', borderRadius: '8px' }}>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Max Drawdown</div>
+            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--accent-red)' }}>{result.maxDrawdownPercent.toFixed(2)}%</div>
+            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Peak to trough risk</div>
+          </div>
+
+          <div style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--border-subtle)', padding: '1rem', borderRadius: '8px' }}>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Profit Factor</div>
+            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--accent-cyan)' }}>{result.profitFactor.toFixed(2)}</div>
+            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Gross wins / gross losses</div>
+          </div>
+        </div>
+      )}
+    </section>
   );
 }

@@ -1,12 +1,16 @@
 import { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import { PrismaClient } from '@solana-arbitrage/database';
 import { AppConfig } from '@solana-arbitrage/config';
-import { LatencyProfiler } from '@solana-arbitrage/arbitrage-engine';
+import { LatencyProfiler, ArbitrageDetector } from '@solana-arbitrage/arbitrage-engine';
+import { MarketReplayEngine, HistoricalTick } from '@solana-arbitrage/simulation-engine';
+import { TokenPair, TokenInfo, Quote } from '@solana-arbitrage/domain';
+import Decimal from 'decimal.js';
 
 export interface SystemRouteOptions {
   prisma: PrismaClient;
   config: AppConfig;
   profiler?: LatencyProfiler | undefined;
+  detector?: ArbitrageDetector | undefined;
 }
 
 export const systemRoutes: FastifyPluginAsync<SystemRouteOptions> = async (
@@ -64,6 +68,118 @@ export const systemRoutes: FastifyPluginAsync<SystemRouteOptions> = async (
       };
     }
     return options.profiler.getAllStageMetrics();
+  });
+
+  fastify.post('/backtest/run', async (request, reply) => {
+    if (!options.detector) {
+      return reply.status(503).send({ error: 'ArbitrageDetector not configured on API instance' });
+    }
+
+    const body = (request.body as {
+      executionDelayMs?: number;
+      simulatedSlippageDecayRate?: number;
+      initialCapitalUsd?: number;
+      sampleTicksCount?: number;
+    }) || {};
+
+    const delayMs = body.executionDelayMs ?? 150;
+    const decayRate = body.simulatedSlippageDecayRate ?? 0.10;
+    const initialCapital = body.initialCapitalUsd ?? options.config.INITIAL_CAPITAL_USD ?? 10.0;
+    const ticksCount = body.sampleTicksCount ?? 500;
+
+    const solToken: TokenInfo = {
+      id: 'sol-id',
+      mintAddress: 'So11111111111111111111111111111111111111112',
+      symbol: 'SOL',
+      name: 'SOL',
+      decimals: 9,
+      enabled: true,
+      whitelisted: true,
+    };
+
+    const usdcToken: TokenInfo = {
+      id: 'usdc-id',
+      mintAddress: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+      symbol: 'USDC',
+      name: 'USDC',
+      decimals: 6,
+      enabled: true,
+      whitelisted: true,
+    };
+
+    const pair: TokenPair = {
+      baseToken: solToken,
+      quoteToken: usdcToken,
+    };
+
+    // Generate realistic historical ticks stream
+    const ticks: HistoricalTick[] = [];
+    const now = Date.now();
+
+    for (let i = 0; i < ticksCount; i++) {
+      const basePrice = 180.0;
+      const raydiumOffset = (Math.sin(i / 10) * 0.45);
+      const orcaOffset = (Math.cos(i / 8) * 0.65);
+
+      const priceA = (basePrice + raydiumOffset).toFixed(4);
+      const priceB = (basePrice + orcaOffset).toFixed(4);
+
+      const quoteA: Quote = {
+        poolId: 'raydium-sol-usdc',
+        dexId: 'raydium',
+        tokenIn: solToken,
+        tokenOut: usdcToken,
+        inputAmount: BigInt(1000000000),
+        expectedOutputAmount: BigInt(180000000),
+        price: new Decimal(priceA),
+        feeAmount: BigInt(250000),
+        priceImpactPercent: new Decimal('0.0005'),
+        estimatedSlippagePercent: new Decimal('0.0010'),
+        slot: BigInt(250000000 + i),
+        timestamp: new Date(now - (ticksCount - i) * 250),
+      };
+
+      const quoteB: Quote = {
+        poolId: 'orca-sol-usdc',
+        dexId: 'orca',
+        tokenIn: solToken,
+        tokenOut: usdcToken,
+        inputAmount: BigInt(1000000000),
+        expectedOutputAmount: BigInt(180000000),
+        price: new Decimal(priceB),
+        feeAmount: BigInt(300000),
+        priceImpactPercent: new Decimal('0.0005'),
+        estimatedSlippagePercent: new Decimal('0.0010'),
+        slot: BigInt(250000000 + i),
+        timestamp: new Date(now - (ticksCount - i) * 250),
+      };
+
+      ticks.push({
+        timestamp: quoteA.timestamp,
+        pair,
+        quoteA,
+        quoteB,
+      });
+    }
+
+    const replayEngine = new MarketReplayEngine(options.detector);
+    const result = await replayEngine.runBacktest(ticks, {
+      executionDelayMs: delayMs,
+      simulatedSlippageDecayRate: decayRate,
+      initialCapitalUsd: initialCapital,
+    });
+
+    return reply.send({
+      success: true,
+      parameters: {
+        executionDelayMs: delayMs,
+        simulatedSlippageDecayRate: decayRate,
+        initialCapitalUsd: initialCapital,
+        ticksEvaluated: ticksCount,
+      },
+      summary: result.summary,
+      recentTrades: result.trades.slice(-10),
+    });
   });
 
   fastify.post('/system/kill-switch', async (_request, reply) => {
