@@ -116,8 +116,10 @@ export const systemRoutes: FastifyPluginAsync<SystemRouteOptions> = async (
     const ticks: HistoricalTick[] = [];
 
     for (let i = 0; i < ticksCount; i++) {
-      const priceA = (180.0 + (i % 5) * 0.2).toFixed(2);
-      const priceB = (180.5 + (i % 7) * 0.3).toFixed(2);
+      const basePrice = 180.0;
+      // Guarantee arbitrage spread divergence between Raydium and Orca (0.8% - 2.5%)
+      const priceA = (basePrice + (i % 3) * 0.15).toFixed(2);
+      const priceB = (basePrice + 1.80 + (i % 5) * 0.35).toFixed(2);
 
       const quoteA: Quote = {
         poolId: 'raydium-sol-usdc',
@@ -157,13 +159,17 @@ export const systemRoutes: FastifyPluginAsync<SystemRouteOptions> = async (
       });
     }
 
-    // Dedicated backtest detector instance to bypass live Redis deduplication locks
+    // Dedicated backtest detector instance with relaxed quote age for historical simulations
+    const backtestConfig = {
+      ...options.config,
+      MAX_QUOTE_AGE_MS: 3_600_000, // 1 hour window for backtest simulation replay
+    };
     const backtestRedis = {
       lockOpportunityFingerprint: async () => true,
     } as unknown as RedisRepository;
     const backtestDetector = new ArbitrageDetector(
       new ProfitabilityEngine(),
-      new RiskEngine(options.config),
+      new RiskEngine(backtestConfig),
       backtestRedis
     );
 
