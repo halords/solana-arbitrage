@@ -1,0 +1,39 @@
+{
+  "name": "solana-arbitrage",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Solana Automated Arbitrage Research and Trading Platform",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "node --loader ts-node/esm apps/api/src/index.ts",
+    "dev:dashboard": "npm run dev --workspace=@solana-arbitrage/dashboard",
+    "build": "tsc -b && npm run build --workspace=@solana-arbitrage/dashboard",
+    "lint": "eslint \"{apps,packages}/**/*.{ts,tsx}\" --max-warnings=0",
+    "lint:fix": "eslint \"{apps,packages}/**/*.{ts,tsx}\" --fix",
+    "format": "prettier --write \"{apps,packages}/**/*.{ts,tsx,json,md}\"",
+    "format:check": "prettier --check \"{apps,packages}/**/*.{ts,tsx,json,md}\"",
+    "tsc:check": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "devDependencies": {
+    "@types/node": "^22.5.4",
+    "@typescript-eslint/eslint-plugin": "^8.5.0",
+    "@typescript-eslint/parser": "^8.5.0",
+    "eslint": "^9.10.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-security": "^3.0.1",
+    "prettier": "^3.3.3",
+    "typescript": "^5.5.4",
+    "vitest": "^2.1.0"
+  },
+  "dependencies": {
+    "decimal.js": "^10.4.3",
+    "pino": "^9.4.0",
+    "zod": "^3.23.8"
+  }
+}

@@ -1,0 +1,216 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// 8.1 DEXs
+model Dex {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @db.VarChar(100)
+  adapterName String   @map("adapter_name") @db.VarChar(100)
+  enabled     Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  pools            Pool[]
+  buyOpportunities Opportunity[] @relation("BuyDexOpportunities")
+  sellOpportunities Opportunity[] @relation("SellDexOpportunities")
+
+  @@map("dexes")
+}
+
+// 8.2 Tokens
+model Token {
+  id          String   @id @default(uuid()) @db.Uuid
+  mintAddress String   @unique @map("mint_address") @db.VarChar(64)
+  symbol      String   @db.VarChar(20)
+  name        String   @db.VarChar(100)
+  decimals    Int
+  enabled     Boolean  @default(true)
+  whitelisted Boolean  @default(false)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  poolsAsTokenA Pool[] @relation("PoolTokenA")
+  poolsAsTokenB Pool[] @relation("PoolTokenB")
+
+  priceSnapshotsIn  PriceSnapshot[] @relation("PriceSnapshotTokenIn")
+  priceSnapshotsOut PriceSnapshot[] @relation("PriceSnapshotTokenOut")
+
+  opportunitiesIn  Opportunity[] @relation("OpportunityTokenIn")
+  opportunitiesOut Opportunity[] @relation("OpportunityTokenOut")
+
+  @@index([symbol])
+  @@map("tokens")
+}
+
+// 8.3 Pools
+model Pool {
+  id             String   @id @default(uuid()) @db.Uuid
+  dexId          String   @map("dex_id") @db.Uuid
+  externalPoolId String   @map("external_pool_id") @db.VarChar(128)
+  tokenAId       String   @map("token_a_id") @db.Uuid
+  tokenBId       String   @map("token_b_id") @db.Uuid
+  poolType       String   @map("pool_type") @db.VarChar(50)
+  liquidity      Decimal  @default(0) @db.Decimal(36, 18)
+  enabled        Boolean  @default(true)
+  lastUpdatedAt  DateTime @default(now()) @map("last_updated_at") @db.Timestamp(6)
+
+  dex    Dex   @relation(fields: [dexId], references: [id], onDelete: Cascade)
+  tokenA Token @relation("PoolTokenA", fields: [tokenAId], references: [id], onDelete: Cascade)
+  tokenB Token @relation("PoolTokenB", fields: [tokenBId], references: [id], onDelete: Cascade)
+
+  priceSnapshots PriceSnapshot[]
+
+  @@unique([dexId, externalPoolId])
+  @@index([tokenAId, tokenBId])
+  @@map("pools")
+}
+
+// 8.4 Price Snapshots
+model PriceSnapshot {
+  id           BigInt   @id @default(autoincrement())
+  poolId       String   @map("pool_id") @db.Uuid
+  tokenInId    String   @map("token_in") @db.Uuid
+  tokenOutId   String   @map("token_out") @db.Uuid
+  inputAmount  Decimal  @map("input_amount") @db.Decimal(36, 18)
+  outputAmount Decimal  @map("output_amount") @db.Decimal(36, 18)
+  price        Decimal  @db.Decimal(36, 18)
+  slot         BigInt
+  observedAt   DateTime @default(now()) @map("observed_at") @db.Timestamp(6)
+
+  pool     Pool  @relation(fields: [poolId], references: [id], onDelete: Cascade)
+  tokenIn  Token @relation("PriceSnapshotTokenIn", fields: [tokenInId], references: [id], onDelete: Cascade)
+  tokenOut Token @relation("PriceSnapshotTokenOut", fields: [tokenOutId], references: [id], onDelete: Cascade)
+
+  @@index([poolId])
+  @@index([observedAt])
+  @@index([tokenInId, tokenOutId])
+  @@map("price_snapshots")
+}
+
+// 8.5 Opportunities
+model Opportunity {
+  id             String   @id @default(uuid()) @db.Uuid
+  fingerprint    String   @unique @db.VarChar(128)
+  inputTokenId   String   @map("input_token_id") @db.Uuid
+  outputTokenId  String   @map("output_token_id") @db.Uuid
+  buyDexId       String   @map("buy_dex_id") @db.Uuid
+  sellDexId      String   @map("sell_dex_id") @db.Uuid
+  tradeAmount    Decimal  @map("trade_amount") @db.Decimal(36, 18)
+  grossProfit    Decimal  @map("gross_profit") @db.Decimal(36, 18)
+  dexFees        Decimal  @map("dex_fees") @db.Decimal(36, 18)
+  networkFees    Decimal  @map("network_fees") @db.Decimal(36, 18)
+  priorityFees   Decimal  @map("priority_fees") @db.Decimal(36, 18)
+  slippageCost   Decimal  @map("slippage_cost") @db.Decimal(36, 18)
+  priceImpact    Decimal  @map("price_impact") @db.Decimal(36, 18)
+  safetyBuffer   Decimal  @map("safety_buffer") @db.Decimal(36, 18)
+  netProfit      Decimal  @map("net_profit") @db.Decimal(36, 18)
+  roi            Decimal  @db.Decimal(10, 4)
+  confidence     Decimal  @default(1.0) @db.Decimal(5, 4)
+  status         String   @db.VarChar(50)
+  detectedAt     DateTime @default(now()) @map("detected_at") @db.Timestamp(6)
+  expiresAt      DateTime @map("expires_at") @db.Timestamp(6)
+
+  inputToken  Token @relation("OpportunityTokenIn", fields: [inputTokenId], references: [id], onDelete: Cascade)
+  outputToken Token @relation("OpportunityTokenOut", fields: [outputTokenId], references: [id], onDelete: Cascade)
+  buyDex      Dex   @relation("BuyDexOpportunities", fields: [buyDexId], references: [id], onDelete: Cascade)
+  sellDex     Dex   @relation("SellDexOpportunities", fields: [sellDexId], references: [id], onDelete: Cascade)
+
+  simulations Simulation[]
+  trades      Trade[]
+  riskEvents  RiskEvent[]
+
+  @@index([status, detectedAt])
+  @@index([inputTokenId, outputTokenId])
+  @@map("opportunities")
+}
+
+// 8.6 Simulations
+model Simulation {
+  id             String   @id @default(uuid()) @db.Uuid
+  opportunityId  String   @map("opportunity_id") @db.Uuid
+  success        Boolean
+  expectedOutput Decimal  @map("expected_output") @db.Decimal(36, 18)
+  actualOutput   Decimal  @map("actual_output") @db.Decimal(36, 18)
+  computeUnits   BigInt?  @map("compute_units")
+  errorCode      String?  @map("error_code") @db.VarChar(100)
+  errorMessage   String?  @map("error_message") @db.Text
+  simulatedAt    DateTime @default(now()) @map("simulated_at") @db.Timestamp(6)
+
+  opportunity Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+
+  @@index([opportunityId])
+  @@map("simulations")
+}
+
+// 8.7 Trades
+model Trade {
+  id                   String    @id @default(uuid()) @db.Uuid
+  opportunityId        String    @map("opportunity_id") @db.Uuid
+  mode                 String    @db.VarChar(20) // PAPER or LIVE
+  inputAmount          Decimal   @map("input_amount") @db.Decimal(36, 18)
+  expectedOutput       Decimal   @map("expected_output") @db.Decimal(36, 18)
+  actualOutput         Decimal   @map("actual_output") @db.Decimal(36, 18)
+  expectedProfit       Decimal   @map("expected_profit") @db.Decimal(36, 18)
+  actualProfit         Decimal   @map("actual_profit") @db.Decimal(36, 18)
+  status               String    @db.VarChar(50)
+  transactionSignature String?   @map("transaction_signature") @db.VarChar(128)
+  executionLatencyMs   Int?      @map("execution_latency_ms")
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  completedAt          DateTime? @map("completed_at") @db.Timestamp(6)
+
+  opportunity Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+
+  @@index([mode, createdAt])
+  @@index([opportunityId])
+  @@map("trades")
+}
+
+// 8.8 Risk Events
+model RiskEvent {
+  id            String   @id @default(uuid()) @db.Uuid
+  opportunityId String?  @map("opportunity_id") @db.Uuid
+  rule          String   @db.VarChar(100)
+  threshold     Decimal  @db.Decimal(36, 18)
+  actualValue   Decimal  @map("actual_value") @db.Decimal(36, 18)
+  action        String   @db.VarChar(50)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  opportunity Opportunity? @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
+
+  @@index([rule, createdAt])
+  @@map("risk_events")
+}
+
+// 8.9 Bot Runs
+model BotRun {
+  id                     String    @id @default(uuid()) @db.Uuid
+  mode                   String    @db.VarChar(20)
+  startedAt              DateTime  @default(now()) @map("started_at") @db.Timestamp(6)
+  stoppedAt              DateTime? @map("stopped_at") @db.Timestamp(6)
+  status                 String    @db.VarChar(50)
+  opportunitiesDetected  Int       @default(0) @map("opportunities_detected")
+  tradesSimulated        Int       @default(0) @map("trades_simulated")
+
+  @@map("bot_runs")
+}
+
+// 8.10 System Events
+model SystemEvent {
+  id        BigInt   @id @default(autoincrement())
+  service   String   @db.VarChar(100)
+  level     String   @db.VarChar(20)
+  eventType String   @map("event_type") @db.VarChar(100)
+  message   String   @db.Text
+  metadata  Json?    @db.JsonB
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  @@index([service, createdAt])
+  @@index([level])
+  @@map("system_events")
+}

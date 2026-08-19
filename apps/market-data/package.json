@@ -1,0 +1,15 @@
+{
+  "name": "@solana-arbitrage/market-data",
+  "version": "1.0.0",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "dependencies": {
+    "@solana-arbitrage/config": "*",
+    "@solana-arbitrage/database": "*",
+    "@solana-arbitrage/dex-adapters": "*",
+    "@solana-arbitrage/domain": "*",
+    "@solana-arbitrage/logging": "*",
+    "@solana-arbitrage/solana": "*",
+    "decimal.js": "^10.4.3"
+  }
+}

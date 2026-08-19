@@ -1,0 +1,21 @@
+{
+  "name": "@solana-arbitrage/database",
+  "version": "1.0.0",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:seed": "node --loader ts-node/esm src/seed.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.19.1",
+    "@solana-arbitrage/config": "*",
+    "@solana-arbitrage/logging": "*",
+    "ioredis": "^5.4.1"
+  },
+  "devDependencies": {
+    "@types/ioredis": "^5.0.0",
+    "prisma": "^5.19.1"
+  }
+}
