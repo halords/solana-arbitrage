@@ -79,14 +79,19 @@ export async function seedDatabase(prisma: PrismaClient): Promise<void> {
   console.log('✅ Database seeding completed successfully.');
 }
 
-const prisma = new PrismaClient();
-if (process.env.NODE_ENV !== 'test' && !process.env.VITEST) {
-  seedDatabase(prisma)
-    .catch((e: unknown) => {
-      console.error('❌ Error during database seeding:', e);
-      process.exit(1);
-    })
-    .finally(async () => {
-      await prisma.$disconnect();
-    });
+export async function runCliSeed(): Promise<void> {
+  const prisma = new PrismaClient();
+  try {
+    await seedDatabase(prisma);
+  } catch (e: unknown) {
+    console.error('❌ Error during database seeding:', e);
+    process.exit(1);
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
+// Only execute when run directly via CLI (e.g. `node seed.js` or `tsx seed.ts`)
+if (process.argv[1] && process.argv[1].includes('seed')) {
+  void runCliSeed();
 }
