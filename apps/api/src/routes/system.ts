@@ -193,6 +193,16 @@ export const systemRoutes: FastifyPluginAsync<SystemRouteOptions> = async (
     });
   });
 
+  fastify.post('/system/clear-trades', async (_request, reply) => {
+    await options.prisma.trade.deleteMany();
+    await options.prisma.opportunity.deleteMany();
+    return reply.send({
+      success: true,
+      message: 'Successfully cleared all historical trades and opportunities from database',
+      timestamp: new Date(),
+    });
+  });
+
   fastify.post('/system/kill-switch', async (_request, reply) => {
     // Record emergency kill event in database
     await options.prisma.systemEvent.create({

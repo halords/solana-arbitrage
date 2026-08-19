@@ -241,6 +241,40 @@ export default function DashboardPage(): JSX.Element {
           </div>
 
           <button
+            onClick={async () => {
+              if (confirm('Clear all trade history and reset metrics to zero?')) {
+                try {
+                  await window.fetch('http://localhost:3000/api/v1/system/clear-trades', { method: 'POST' });
+                  setMetrics((prev) => ({
+                    ...prev,
+                    totalProfitUsd: 0,
+                    totalTrades: 0,
+                    opportunities: [],
+                  }));
+                } catch {
+                  // Fallback
+                }
+              }
+            }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              background: 'rgba(255, 255, 255, 0.05)',
+              color: 'var(--text-secondary)',
+              border: '1px solid var(--border-subtle)',
+              padding: '8px 14px',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontWeight: 600,
+              fontSize: '0.8rem',
+            }}
+          >
+            <RefreshCw size={14} />
+            RESET STATS
+          </button>
+
+          <button
             onClick={handleKillSwitch}
             disabled={killSwitchTriggered}
             style={{
