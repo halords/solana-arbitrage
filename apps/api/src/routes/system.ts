@@ -117,12 +117,9 @@ export const systemRoutes: FastifyPluginAsync<SystemRouteOptions> = async (
 
     for (let i = 0; i < ticksCount; i++) {
       const basePrice = 180.0;
-      // Realistic DEX price divergence waves (0.5% - 2.5% spread variation)
-      const raydiumOffset = Math.sin(i / 6) * 1.85;
-      const orcaOffset = Math.cos(i / 5) * 2.20;
-
-      const priceA = (basePrice + raydiumOffset).toFixed(4);
-      const priceB = (basePrice + orcaOffset).toFixed(4);
+      // Realistic DEX price divergence waves (0.8% - 2.5% spread variation)
+      const raydiumPrice = (basePrice + (i % 3) * 0.20).toFixed(4);
+      const orcaPrice = (basePrice + 1.80 + (i % 5) * 0.35).toFixed(4);
 
       const quoteA: Quote = {
         poolId: 'raydium-sol-usdc',
@@ -131,7 +128,7 @@ export const systemRoutes: FastifyPluginAsync<SystemRouteOptions> = async (
         tokenOut: usdcToken,
         inputAmount: BigInt(1000000000),
         expectedOutputAmount: BigInt(180000000),
-        price: new Decimal(priceA),
+        price: new Decimal(raydiumPrice),
         feeAmount: BigInt(250000),
         priceImpactPercent: new Decimal('0.0005'),
         estimatedSlippagePercent: new Decimal('0.0010'),
@@ -146,7 +143,7 @@ export const systemRoutes: FastifyPluginAsync<SystemRouteOptions> = async (
         tokenOut: usdcToken,
         inputAmount: BigInt(1000000000),
         expectedOutputAmount: BigInt(180000000),
-        price: new Decimal(priceB),
+        price: new Decimal(orcaPrice),
         feeAmount: BigInt(300000),
         priceImpactPercent: new Decimal('0.0005'),
         estimatedSlippagePercent: new Decimal('0.0010'),
