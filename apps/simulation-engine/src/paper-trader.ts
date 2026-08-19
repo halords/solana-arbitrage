@@ -1,6 +1,7 @@
 import { ArbitrageOpportunity, PaperTradeRecord } from '@solana-arbitrage/domain';
 import { TransactionSimulator } from './simulator.js';
 import { Logger } from 'pino';
+import { randomUUID } from 'node:crypto';
 
 export class PaperTradingEngine {
   private readonly simulator: TransactionSimulator;
@@ -30,7 +31,7 @@ export class PaperTradingEngine {
 
     // 3. Create paper trade record (mode = 'PAPER' strictly enforced)
     const paperTrade: PaperTradeRecord = {
-      id: `trade-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`,
+      id: randomUUID(),
       opportunityId: opportunity.id,
       mode: 'PAPER',
       inputAmountUsd: opportunity.tradeAmountUsd,

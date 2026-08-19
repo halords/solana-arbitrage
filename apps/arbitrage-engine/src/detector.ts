@@ -4,6 +4,8 @@ import { RiskEngine } from './risk.js';
 import { RedisRepository } from '@solana-arbitrage/database';
 import { Logger } from 'pino';
 
+import { randomUUID } from 'node:crypto';
+
 export class ArbitrageDetector {
   private readonly profitabilityEngine: ProfitabilityEngine;
   private readonly riskEngine: RiskEngine;
@@ -80,7 +82,7 @@ export class ArbitrageDetector {
     }
 
     const opportunity: ArbitrageOpportunity = {
-      id: `opp-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`,
+      id: randomUUID(),
       fingerprint,
       tokenPair: pair,
       buyDexId: buyQuote.dexId,
