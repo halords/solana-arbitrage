@@ -111,7 +111,7 @@ async function main(): Promise<void> {
                 expiresAt: opportunity.expiresAt,
               };
 
-              await prisma.opportunity.upsert({
+              const persistedOpp = await prisma.opportunity.upsert({
                 where: { fingerprint: opportunity.fingerprint },
                 update: {
                   netProfit: opportunity.netProfitUsd,
@@ -123,34 +123,34 @@ async function main(): Promise<void> {
                   ...oppData,
                 },
               });
-            }
 
-            // 2. Execute Paper Trade and Persist to Ledger
-            const paperTrade = await paperTrader.executePaperTrade(opportunity);
-            if (paperTrade) {
-              await prisma.trade.create({
-                data: {
-                  opportunityId: opportunity.id,
-                  mode: 'PAPER',
-                  inputAmount: paperTrade.inputAmountUsd,
-                  expectedOutput: paperTrade.expectedOutputUsd,
-                  actualOutput: paperTrade.actualOutputUsd,
-                  expectedProfit: paperTrade.expectedProfitUsd,
-                  actualProfit: paperTrade.actualProfitUsd,
-                  status: paperTrade.status,
-                },
-              });
+              // 2. Execute Paper Trade and Persist to Ledger
+              const paperTrade = await paperTrader.executePaperTrade(opportunity);
+              if (paperTrade) {
+                await prisma.trade.create({
+                  data: {
+                    opportunityId: persistedOpp.id,
+                    mode: 'PAPER',
+                    inputAmount: paperTrade.inputAmountUsd,
+                    expectedOutput: paperTrade.expectedOutputUsd,
+                    actualOutput: paperTrade.actualOutputUsd,
+                    expectedProfit: paperTrade.expectedProfitUsd,
+                    actualProfit: paperTrade.actualProfitUsd,
+                    status: paperTrade.status,
+                  },
+                });
 
-              const metrics = performanceCalc.calculateMetrics(paperTrader.getTradeHistory());
-              logger.info(
-                {
-                  tradeId: paperTrade.id,
-                  totalPaperTrades: metrics.totalPaperTrades,
-                  winRate: `${metrics.winRatePercent.toFixed(1)}%`,
-                  totalNetProfit: `$${metrics.totalNetProfitUsd.toFixed(4)}`,
-                },
-                '📈 Paper Trade Executed & Persisted'
-              );
+                const metrics = performanceCalc.calculateMetrics(paperTrader.getTradeHistory());
+                logger.info(
+                  {
+                    tradeId: paperTrade.id,
+                    totalPaperTrades: metrics.totalPaperTrades,
+                    winRate: `${metrics.winRatePercent.toFixed(1)}%`,
+                    totalNetProfit: `$${metrics.totalNetProfitUsd.toFixed(4)}`,
+                  },
+                  '📈 Paper Trade Executed & Persisted'
+                );
+              }
             }
           }
         }
