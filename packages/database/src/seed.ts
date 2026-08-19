@@ -81,8 +81,7 @@ export async function seedDatabase(prisma: PrismaClient): Promise<void> {
 
 const prisma = new PrismaClient();
 seedDatabase(prisma)
-  .catch((e) => {
-    // eslint-disable-next-line no-console
+  .catch((e: unknown) => {
     console.error('❌ Error during database seeding:', e);
     process.exit(1);
   })

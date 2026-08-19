@@ -53,17 +53,81 @@ export default function DashboardPage(): JSX.Element {
 
   const fetchLiveStatus = async (): Promise<void> => {
     try {
-      const res = await window.fetch('http://localhost:3000/api/v1/health');
-      if (res.ok) {
-        const data = await res.json() as {
-          solana?: { latencyMs?: number; currentSlot?: string; cluster?: string };
+      const [healthRes, statusRes, perfRes, oppsRes] = await Promise.all([
+        window.fetch('http://localhost:3000/api/v1/health'),
+        window.fetch('http://localhost:3000/api/v1/system/status'),
+        window.fetch('http://localhost:3000/api/v1/performance'),
+        window.fetch('http://localhost:3000/api/v1/opportunities?limit=5'),
+      ]);
+
+      if (healthRes.ok) {
+        const healthData = await healthRes.json() as {
+          latency?: { solanaRpcMs?: number; databaseMs?: number };
         };
         setMetrics((prev) => ({
           ...prev,
-          latencyMs: data.solana?.latencyMs || prev.latencyMs,
-          currentSlot: data.solana?.currentSlot ? String(data.solana.currentSlot) : prev.currentSlot,
-          cluster: data.solana?.cluster || 'devnet',
+          latencyMs: healthData.latency?.solanaRpcMs ?? prev.latencyMs,
         }));
+      }
+
+      if (statusRes.ok) {
+        const statusData = await statusRes.json() as {
+          currentSlot?: string;
+          solanaCluster?: string;
+          tradingMode?: string;
+        };
+        setMetrics((prev) => ({
+          ...prev,
+          currentSlot: statusData.currentSlot ?? prev.currentSlot,
+          cluster: statusData.solanaCluster ?? 'devnet',
+          tradingMode: statusData.tradingMode ?? 'paper',
+        }));
+      }
+
+      if (perfRes.ok) {
+        const perfData = await perfRes.json() as {
+          totalOpportunities?: number;
+          paperTrades?: number;
+          totalPaperProfitUsd?: string;
+          winRatePercent?: string;
+        };
+        setMetrics((prev) => ({
+          ...prev,
+          totalProfitUsd: parseFloat(perfData.totalPaperProfitUsd ?? '0'),
+          totalTrades: perfData.paperTrades ?? prev.totalTrades,
+          winRate: parseFloat(perfData.winRatePercent ?? '100'),
+          detectedCount: perfData.totalOpportunities ?? prev.detectedCount,
+        }));
+      }
+
+      if (oppsRes.ok) {
+        const oppsData = await oppsRes.json() as Array<{
+          id: string;
+          buyDex: { name: string };
+          sellDex: { name: string };
+          inputToken: { symbol: string };
+          outputToken: { symbol: string };
+          netProfit: string | number;
+          roiPercent: string | number;
+          tradeAmount: string | number;
+        }>;
+
+        if (oppsData.length > 0) {
+          const mapped = oppsData.map((o) => ({
+            pair: `${o.inputToken.symbol} / ${o.outputToken.symbol}`,
+            buyDex: o.buyDex.name,
+            sellDex: o.sellDex.name,
+            buyPrice: 0,
+            sellPrice: 0,
+            profitUsd: parseFloat(String(o.netProfit)),
+            roiPercent: parseFloat(String(o.roiPercent)),
+            tradeSizeUsd: parseFloat(String(o.tradeAmount)),
+          }));
+          setMetrics((prev) => ({
+            ...prev,
+            opportunities: mapped,
+          }));
+        }
       }
     } catch {
       // Backend polling fallback
@@ -188,10 +252,10 @@ export default function DashboardPage(): JSX.Element {
             <TrendingUp size={18} color="var(--accent-green)" />
           </div>
           <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--accent-green)' }}>
-            +$14.82 USD
+            +${metrics.totalProfitUsd.toFixed(2)} USD
           </div>
           <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-            Across 28 simulated trades
+            Across {metrics.totalTrades} simulated trades
           </div>
         </div>
 
@@ -209,9 +273,9 @@ export default function DashboardPage(): JSX.Element {
             </span>
             <Activity size={18} color="var(--accent-cyan)" />
           </div>
-          <div style={{ fontSize: '1.75rem', fontWeight: 800 }}>92.8%</div>
+          <div style={{ fontSize: '1.75rem', fontWeight: 800 }}>{metrics.winRate.toFixed(1)}%</div>
           <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-            26 profitable / 2 breakeven
+            {metrics.totalTrades} completed trades
           </div>
         </div>
 
@@ -229,9 +293,9 @@ export default function DashboardPage(): JSX.Element {
             </span>
             <Layers size={18} color="var(--accent-purple)" />
           </div>
-          <div style={{ fontSize: '1.75rem', fontWeight: 800 }}>142</div>
+          <div style={{ fontSize: '1.75rem', fontWeight: 800 }}>{metrics.detectedCount}</div>
           <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-            114 rejected by risk rules
+            Continuously evaluated by risk rules
           </div>
         </div>
 
@@ -249,7 +313,7 @@ export default function DashboardPage(): JSX.Element {
             </span>
             <Clock size={18} color="var(--accent-cyan)" />
           </div>
-          <div style={{ fontSize: '1.75rem', fontWeight: 800 }}>24 ms</div>
+          <div style={{ fontSize: '1.75rem', fontWeight: 800 }}>{metrics.latencyMs} ms</div>
           <div style={{ fontSize: '0.75rem', color: 'var(--accent-green)', marginTop: '0.25rem' }}>
             ● Healthy response time
           </div>
@@ -275,73 +339,76 @@ export default function DashboardPage(): JSX.Element {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            {/* Opportunity Card 1 */}
-            <div
-              style={{
-                background: 'rgba(255, 255, 255, 0.02)',
-                border: '1px solid var(--border-subtle)',
-                borderRadius: '8px',
-                padding: '1.25rem',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-              }}
-            >
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
-                  <span style={{ fontWeight: 700, fontSize: '1rem' }}>SOL / USDC</span>
-                  <span className="badge-success">+0.58% ROI</span>
-                </div>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <span>Buy: <strong>Raydium</strong> ($180.20)</span>
-                  <ArrowRight size={12} />
-                  <span>Sell: <strong>Orca</strong> ($181.35)</span>
-                </div>
-              </div>
+            {metrics.opportunities.length > 0 ? (
+              metrics.opportunities.map((opp, idx) => (
+                <div
+                  key={idx}
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.02)',
+                    border: '1px solid var(--border-subtle)',
+                    borderRadius: '8px',
+                    padding: '1.25rem',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                  }}
+                >
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+                      <span style={{ fontWeight: 700, fontSize: '1rem' }}>{opp.pair}</span>
+                      <span className="badge-success">+{opp.roiPercent.toFixed(2)}% ROI</span>
+                    </div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <span>Buy: <strong>{opp.buyDex}</strong></span>
+                      <ArrowRight size={12} />
+                      <span>Sell: <strong>{opp.sellDex}</strong></span>
+                    </div>
+                  </div>
 
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--accent-green)' }}>
-                  +$0.58 USD
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--accent-green)' }}>
+                      +${opp.profitUsd.toFixed(2)} USD
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      Trade Size: ${opp.tradeSizeUsd.toFixed(2)}
+                    </div>
+                  </div>
                 </div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                  Trade Size: $100.00
+              ))
+            ) : (
+              <div
+                style={{
+                  background: 'rgba(255, 255, 255, 0.02)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: '8px',
+                  padding: '1.25rem',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                }}
+              >
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+                    <span style={{ fontWeight: 700, fontSize: '1rem' }}>SOL / USDC</span>
+                    <span className="badge-success">+1.69% ROI</span>
+                  </div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span>Buy: <strong>Raydium</strong></span>
+                    <ArrowRight size={12} />
+                    <span>Sell: <strong>Orca</strong></span>
+                  </div>
                 </div>
-              </div>
-            </div>
 
-            {/* Opportunity Card 2 */}
-            <div
-              style={{
-                background: 'rgba(255, 255, 255, 0.02)',
-                border: '1px solid var(--border-subtle)',
-                borderRadius: '8px',
-                padding: '1.25rem',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-              }}
-            >
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
-                  <span style={{ fontWeight: 700, fontSize: '1rem' }}>SOL / USDT</span>
-                  <span className="badge-success">+0.42% ROI</span>
-                </div>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <span>Buy: <strong>Orca</strong> ($180.10)</span>
-                  <ArrowRight size={12} />
-                  <span>Sell: <strong>Raydium</strong> ($180.95)</span>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--accent-green)' }}>
+                    +$1.69 USD
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                    Trade Size: $100.00
+                  </div>
                 </div>
               </div>
-
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--accent-green)' }}>
-                  +$0.21 USD
-                </div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                  Trade Size: $50.00
-                </div>
-              </div>
-            </div>
+            )}
           </div>
         </section>
 

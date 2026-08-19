@@ -83,9 +83,54 @@ async function main(): Promise<void> {
               '🎯 Qualified Arbitrage Opportunity Detected'
             );
 
-            // Execute Paper Trade
+            // 1. Persist Opportunity to Database
+            const buyDexEntity = await prisma.dex.findFirst({ where: { adapterName: opportunity.buyDexId } });
+            const sellDexEntity = await prisma.dex.findFirst({ where: { adapterName: opportunity.sellDexId } });
+            const inTokenEntity = await prisma.token.findFirst({ where: { symbol: pair.baseToken.symbol } });
+            const outTokenEntity = await prisma.token.findFirst({ where: { symbol: pair.quoteToken.symbol } });
+
+            if (buyDexEntity && sellDexEntity && inTokenEntity && outTokenEntity) {
+              await prisma.opportunity.create({
+                data: {
+                  id: opportunity.id,
+                  fingerprint: opportunity.fingerprint,
+                  buyDexId: buyDexEntity.id,
+                  sellDexId: sellDexEntity.id,
+                  inputTokenId: inTokenEntity.id,
+                  outputTokenId: outTokenEntity.id,
+                  tradeAmount: opportunity.tradeAmountUsd,
+                  grossProfit: opportunity.grossProfitUsd,
+                  dexFees: opportunity.dexFeesUsd,
+                  networkFees: opportunity.networkFeesUsd,
+                  priorityFees: opportunity.priorityFeesUsd,
+                  slippageCost: opportunity.slippageCostUsd,
+                  priceImpact: opportunity.priceImpactUsd,
+                  safetyBuffer: opportunity.safetyBufferUsd,
+                  netProfit: opportunity.netProfitUsd,
+                  roi: opportunity.roiPercent,
+                  status: 'DETECTED',
+                  detectedAt: opportunity.detectedAt,
+                  expiresAt: opportunity.expiresAt,
+                },
+              });
+            }
+
+            // 2. Execute Paper Trade and Persist to Ledger
             const paperTrade = await paperTrader.executePaperTrade(opportunity);
             if (paperTrade) {
+              await prisma.trade.create({
+                data: {
+                  opportunityId: opportunity.id,
+                  mode: 'PAPER',
+                  inputAmount: paperTrade.inputAmountUsd,
+                  expectedOutput: paperTrade.expectedOutputUsd,
+                  actualOutput: paperTrade.actualOutputUsd,
+                  expectedProfit: paperTrade.expectedProfitUsd,
+                  actualProfit: paperTrade.actualProfitUsd,
+                  status: paperTrade.status,
+                },
+              });
+
               const metrics = performanceCalc.calculateMetrics(paperTrader.getTradeHistory());
               logger.info(
                 {
@@ -94,7 +139,7 @@ async function main(): Promise<void> {
                   winRate: `${metrics.winRatePercent.toFixed(1)}%`,
                   totalNetProfit: `$${metrics.totalNetProfitUsd.toFixed(4)}`,
                 },
-                '📈 Paper Trade Executed & Performance Updated'
+                '📈 Paper Trade Executed & Persisted'
               );
             }
           }
