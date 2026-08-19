@@ -1,7 +1,7 @@
 import { FastifyInstance, FastifyPluginAsync } from 'fastify';
-import { PrismaClient } from '@solana-arbitrage/database';
+import { PrismaClient, RedisRepository } from '@solana-arbitrage/database';
 import { AppConfig } from '@solana-arbitrage/config';
-import { LatencyProfiler, ArbitrageDetector } from '@solana-arbitrage/arbitrage-engine';
+import { LatencyProfiler, ArbitrageDetector, ProfitabilityEngine, RiskEngine } from '@solana-arbitrage/arbitrage-engine';
 import { MarketReplayEngine, HistoricalTick } from '@solana-arbitrage/simulation-engine';
 import { TokenPair, TokenInfo, Quote } from '@solana-arbitrage/domain';
 import Decimal from 'decimal.js';
@@ -162,7 +162,17 @@ export const systemRoutes: FastifyPluginAsync<SystemRouteOptions> = async (
       });
     }
 
-    const replayEngine = new MarketReplayEngine(options.detector);
+    // Dedicated backtest detector instance to bypass live Redis deduplication locks
+    const backtestRedis = {
+      lockOpportunityFingerprint: async () => true,
+    } as unknown as RedisRepository;
+    const backtestDetector = new ArbitrageDetector(
+      new ProfitabilityEngine(),
+      new RiskEngine(options.config),
+      backtestRedis
+    );
+
+    const replayEngine = new MarketReplayEngine(backtestDetector);
     const result = await replayEngine.runBacktest(ticks, {
       executionDelayMs: delayMs,
       simulatedSlippageDecayRate: decayRate,
