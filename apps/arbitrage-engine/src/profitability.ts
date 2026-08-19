@@ -95,8 +95,8 @@ export class ProfitabilityEngine {
   public optimizeTradeSize(
     buyQuote: Quote,
     sellQuote: Quote,
-    sizes: number[] = [10, 25, 50, 100],
-    maxTradeUsd = 100
+    sizes: number[] = [1, 2.5, 5, 10],
+    maxTradeUsd = 10
   ): ProfitabilityCalculationResult | null {
     let bestResult: ProfitabilityCalculationResult | null = null;
 

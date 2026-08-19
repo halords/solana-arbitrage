@@ -69,8 +69,8 @@ describe('ProfitabilityEngine', () => {
   });
 
   it('should find optimal trade size across predefined tiers', () => {
-    const optimal = engine.optimizeTradeSize(buyQuote, sellQuote, [10, 25, 50, 100]);
+    const optimal = engine.optimizeTradeSize(buyQuote, sellQuote, [1, 2.5, 5, 10], 10);
     expect(optimal).not.toBeNull();
-    expect(optimal?.tradeAmountUsd.toNumber()).toBe(100);
+    expect(optimal?.tradeAmountUsd.toNumber()).toBe(10);
   });
 });
