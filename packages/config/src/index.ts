@@ -50,7 +50,7 @@ export const EnvSchema = z.object({
 
   API_AUTH_ENABLED: z.coerce.boolean().default(true),
   JWT_SECRET: z.string().min(16).default('development_jwt_secret_must_be_long_and_secure'),
-  API_RATE_LIMIT: z.coerce.number().default(100),
+  API_RATE_LIMIT: z.coerce.number().default(1000),
 });
 
 export type AppConfig = z.infer<typeof EnvSchema>;
