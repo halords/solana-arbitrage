@@ -43,23 +43,27 @@ export class MainnetWalletManager {
     }
 
     // 1. Try loading from existing keypair file
-    const keypairPath = this.config.MAINNET_KEYPAIR_PATH;
+    const keypairPath = this.config.MAINNET_KEYPAIR_PATH || path.join(process.cwd(), 'mainnet-hot-wallet.json');
     if (keypairPath) {
       try {
         // eslint-disable-next-line security/detect-non-literal-fs-filename
         if (fs.existsSync(keypairPath)) {
           // eslint-disable-next-line security/detect-non-literal-fs-filename
           const raw = fs.readFileSync(keypairPath, 'utf-8');
-          const bytes = new Uint8Array(JSON.parse(raw) as number[]);
-          this.signer = await createKeyPairSignerFromBytes(bytes);
-          this.logger?.info(
-            { address: this.signer.address },
-            '🔑 Loaded Mainnet hot wallet from keypair file'
-          );
-          return this.signer;
+          const parsed = JSON.parse(raw);
+          const rawBytes = Array.isArray(parsed) ? parsed : parsed.keypairBytes;
+          if (rawBytes) {
+            const bytes = new Uint8Array(rawBytes as number[]);
+            this.signer = await createKeyPairSignerFromBytes(bytes);
+            this.logger?.info(
+              { address: this.signer.address },
+              '🔑 Loaded Mainnet hot wallet from keypair file'
+            );
+            return this.signer;
+          }
         }
       } catch (err: unknown) {
-        this.logger?.warn({ err }, 'Failed to load MAINNET_KEYPAIR_PATH, generating fresh keypair');
+        this.logger?.warn({ err }, 'Failed to load keypair file, generating fresh keypair');
       }
     }
 
