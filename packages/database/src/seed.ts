@@ -9,7 +9,7 @@ const INITIAL_DEXES = [
   {
     name: 'Orca',
     adapterName: 'orca',
-    enabled: false,
+    enabled: true,
   },
 ];
 
@@ -42,7 +42,7 @@ const INITIAL_TOKENS = [
 
 export async function seedDatabase(prisma: PrismaClient): Promise<void> {
   // eslint-disable-next-line no-console
-  console.log('Seeding initial DEXs...');
+  console.log('🌱 Seeding initial DEXs...');
   for (const dex of INITIAL_DEXES) {
     const existing = await prisma.dex.findFirst({
       where: { adapterName: dex.adapterName },
@@ -51,11 +51,16 @@ export async function seedDatabase(prisma: PrismaClient): Promise<void> {
       await prisma.dex.create({
         data: dex,
       });
+    } else {
+      await prisma.dex.update({
+        where: { id: existing.id },
+        data: { enabled: true },
+      });
     }
   }
 
   // eslint-disable-next-line no-console
-  console.log('Seeding whitelisted tokens...');
+  console.log('🌱 Seeding whitelisted tokens...');
   for (const token of INITIAL_TOKENS) {
     await prisma.token.upsert({
       where: { mintAddress: token.mintAddress },
@@ -71,5 +76,16 @@ export async function seedDatabase(prisma: PrismaClient): Promise<void> {
   }
 
   // eslint-disable-next-line no-console
-  console.log('Database seeding completed successfully.');
+  console.log('✅ Database seeding completed successfully.');
 }
+
+const prisma = new PrismaClient();
+seedDatabase(prisma)
+  .catch((e) => {
+    // eslint-disable-next-line no-console
+    console.error('❌ Error during database seeding:', e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });
