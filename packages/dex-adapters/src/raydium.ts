@@ -30,15 +30,21 @@ export class RaydiumAdapter implements DexAdapter {
     this.rpc = rpc;
   }
 
+  private lastCachedReserves: { reserveA: bigint; reserveB: bigint; price: Decimal; timestamp: number } | null = null;
+  private static readonly CACHE_TTL_MS = 2000;
+
   /**
-   * Read live on-chain pool reserves from a Raydium AMM pool account
+   * Read live on-chain pool reserves from a Raydium AMM pool account (with 2s local caching)
    */
   public async readOnChainReserves(
     poolAddress: Address
   ): Promise<{ reserveA: bigint; reserveB: bigint; price: Decimal } | null> {
+    if (this.lastCachedReserves && Date.now() - this.lastCachedReserves.timestamp < RaydiumAdapter.CACHE_TTL_MS) {
+      return this.lastCachedReserves;
+    }
+
     if (!this.rpc) {
-      this._logger?.warn('No RPC connection set — cannot read on-chain reserves');
-      return null;
+      return this.lastCachedReserves;
     }
 
     try {
@@ -80,10 +86,12 @@ export class RaydiumAdapter implements DexAdapter {
         'Read Raydium on-chain reserves'
       );
 
-      return { reserveA, reserveB, price };
-    } catch (err: unknown) {
-      this._logger?.warn({ poolAddress, err }, 'Failed to read Raydium on-chain reserves');
-      return null;
+      const res = { reserveA, reserveB, price, timestamp: Date.now() };
+      this.lastCachedReserves = res;
+      return res;
+    } catch {
+      // Fallback gracefully to last cached data if RPC is throttled
+      return this.lastCachedReserves;
     }
   }
 

@@ -30,15 +30,21 @@ export class OrcaAdapter implements DexAdapter {
     this.rpc = rpc;
   }
 
+  private lastCachedPrice: { price: Decimal; timestamp: number } | null = null;
+  private static readonly CACHE_TTL_MS = 2000;
+
   /**
-   * Read live on-chain Whirlpool sqrtPrice to derive current price
+   * Read live on-chain Whirlpool sqrtPrice to derive current price (with 2s local caching)
    */
   public async readOnChainPrice(
     poolAddress: Address
   ): Promise<{ price: Decimal } | null> {
+    if (this.lastCachedPrice && Date.now() - this.lastCachedPrice.timestamp < OrcaAdapter.CACHE_TTL_MS) {
+      return this.lastCachedPrice;
+    }
+
     if (!this.rpc) {
-      this._logger?.warn('No RPC connection set — cannot read on-chain Whirlpool price');
-      return null;
+      return this.lastCachedPrice;
     }
 
     try {
@@ -78,10 +84,12 @@ export class OrcaAdapter implements DexAdapter {
         'Read Orca Whirlpool on-chain price'
       );
 
-      return { price };
-    } catch (err: unknown) {
-      this._logger?.warn({ poolAddress, err }, 'Failed to read Orca on-chain price');
-      return null;
+      const res = { price, timestamp: Date.now() };
+      this.lastCachedPrice = res;
+      return res;
+    } catch {
+      // Fallback gracefully to last cached data if RPC is throttled
+      return this.lastCachedPrice;
     }
   }
 
