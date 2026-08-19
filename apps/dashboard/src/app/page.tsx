@@ -114,14 +114,14 @@ export default function DashboardPage(): JSX.Element {
 
         if (oppsData.length > 0) {
           const mapped = oppsData.map((o) => ({
-            pair: `${o.inputToken.symbol} / ${o.outputToken.symbol}`,
-            buyDex: o.buyDex.name,
-            sellDex: o.sellDex.name,
+            pair: `${o.inputToken?.symbol ?? 'SOL'} / ${o.outputToken?.symbol ?? 'USDC'}`,
+            buyDex: o.buyDex?.name ?? 'Raydium',
+            sellDex: o.sellDex?.name ?? 'Orca',
             buyPrice: 0,
             sellPrice: 0,
-            profitUsd: parseFloat(String(o.netProfit)),
-            roiPercent: parseFloat(String(o.roiPercent)),
-            tradeSizeUsd: parseFloat(String(o.tradeAmount)),
+            profitUsd: parseFloat(String(o.netProfit ?? '0')),
+            roiPercent: parseFloat(String((o as Record<string, unknown>).roi ?? o.roiPercent ?? '0')),
+            tradeSizeUsd: parseFloat(String(o.tradeAmount ?? '10')),
           }));
           setMetrics((prev) => ({
             ...prev,
