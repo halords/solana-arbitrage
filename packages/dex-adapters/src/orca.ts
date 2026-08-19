@@ -72,15 +72,18 @@ export class OrcaAdapter implements DexAdapter {
       const hi = buffer.readBigUInt64LE(OrcaAdapter.SQRT_PRICE_OFFSET + 8);
       const sqrtPriceX64 = (hi << BigInt(64)) | lo;
 
-      // price = (sqrtPriceX64 / 2^64)^2 * 10^(decimalsA - decimalsB)
-      // For SOL/USDC: decimalsA=9, decimalsB=6, factor = 10^3
+      // Orca SOL/USDC Whirlpool: TokenA=USDC (6 decimals), TokenB=SOL (9 decimals)
+      // raw_price = (sqrtPriceX64 / 2^64)^2 (in SOL per USDC)
+      // Price in USDC per SOL = 1 / (raw_price * 10^(9 - 6)) = 1 / (raw_price * 1000)
       const sqrtPriceDecimal = new Decimal(sqrtPriceX64.toString()).div(
         new Decimal(2).pow(64)
       );
-      const price = sqrtPriceDecimal.pow(2).mul(new Decimal('1000'));
+      const rawPrice = sqrtPriceDecimal.pow(2);
+      // Derive real-time SOL price in USD:
+      const price = new Decimal(1).div(rawPrice.mul(new Decimal('0.001')));
 
       this._logger?.debug(
-        { poolAddress, sqrtPriceX64: sqrtPriceX64.toString(), price: price.toFixed(4) },
+        { poolAddress, price: price.toFixed(4) },
         'Read Orca Whirlpool on-chain price'
       );
 
