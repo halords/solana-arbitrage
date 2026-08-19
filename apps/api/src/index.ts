@@ -43,6 +43,8 @@ async function main(): Promise<void> {
   const adapterRegistry = new DexAdapterRegistry();
   const raydiumAdapter = new RaydiumAdapter(config, logger);
   const orcaAdapter = new OrcaAdapter(config, logger);
+  raydiumAdapter.setRpc(solanaBundle.rpc);
+  orcaAdapter.setRpc(solanaBundle.rpc);
   adapterRegistry.register(raydiumAdapter);
   adapterRegistry.register(orcaAdapter);
 
