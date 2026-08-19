@@ -90,27 +90,37 @@ async function main(): Promise<void> {
             const outTokenEntity = await prisma.token.findFirst({ where: { symbol: pair.quoteToken.symbol } });
 
             if (buyDexEntity && sellDexEntity && inTokenEntity && outTokenEntity) {
-              await prisma.opportunity.create({
-                data: {
-                  id: opportunity.id,
-                  fingerprint: opportunity.fingerprint,
-                  buyDexId: buyDexEntity.id,
-                  sellDexId: sellDexEntity.id,
-                  inputTokenId: inTokenEntity.id,
-                  outputTokenId: outTokenEntity.id,
-                  tradeAmount: opportunity.tradeAmountUsd,
-                  grossProfit: opportunity.grossProfitUsd,
-                  dexFees: opportunity.dexFeesUsd,
-                  networkFees: opportunity.networkFeesUsd,
-                  priorityFees: opportunity.priorityFeesUsd,
-                  slippageCost: opportunity.slippageCostUsd,
-                  priceImpact: opportunity.priceImpactUsd,
-                  safetyBuffer: opportunity.safetyBufferUsd,
+              const oppData = {
+                fingerprint: opportunity.fingerprint,
+                buyDexId: buyDexEntity.id,
+                sellDexId: sellDexEntity.id,
+                inputTokenId: inTokenEntity.id,
+                outputTokenId: outTokenEntity.id,
+                tradeAmount: opportunity.tradeAmountUsd,
+                grossProfit: opportunity.grossProfitUsd,
+                dexFees: opportunity.dexFeesUsd,
+                networkFees: opportunity.networkFeesUsd,
+                priorityFees: opportunity.priorityFeesUsd,
+                slippageCost: opportunity.slippageCostUsd,
+                priceImpact: opportunity.priceImpactUsd,
+                safetyBuffer: opportunity.safetyBufferUsd,
+                netProfit: opportunity.netProfitUsd,
+                roi: opportunity.roiPercent,
+                status: 'DETECTED',
+                detectedAt: opportunity.detectedAt,
+                expiresAt: opportunity.expiresAt,
+              };
+
+              await prisma.opportunity.upsert({
+                where: { fingerprint: opportunity.fingerprint },
+                update: {
                   netProfit: opportunity.netProfitUsd,
                   roi: opportunity.roiPercent,
-                  status: 'DETECTED',
-                  detectedAt: opportunity.detectedAt,
                   expiresAt: opportunity.expiresAt,
+                },
+                create: {
+                  id: opportunity.id,
+                  ...oppData,
                 },
               });
             }
