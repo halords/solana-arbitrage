@@ -114,7 +114,6 @@ export const systemRoutes: FastifyPluginAsync<SystemRouteOptions> = async (
 
     // Generate realistic historical ticks stream
     const ticks: HistoricalTick[] = [];
-    const now = Date.now();
 
     for (let i = 0; i < ticksCount; i++) {
       const basePrice = 180.0;
@@ -137,7 +136,7 @@ export const systemRoutes: FastifyPluginAsync<SystemRouteOptions> = async (
         priceImpactPercent: new Decimal('0.0005'),
         estimatedSlippagePercent: new Decimal('0.0010'),
         slot: BigInt(250000000 + i),
-        timestamp: new Date(now - (ticksCount - i) * 250),
+        timestamp: new Date(),
       };
 
       const quoteB: Quote = {
@@ -152,7 +151,7 @@ export const systemRoutes: FastifyPluginAsync<SystemRouteOptions> = async (
         priceImpactPercent: new Decimal('0.0005'),
         estimatedSlippagePercent: new Decimal('0.0010'),
         slot: BigInt(250000000 + i),
-        timestamp: new Date(now - (ticksCount - i) * 250),
+        timestamp: new Date(),
       };
 
       ticks.push({
