@@ -1,10 +1,12 @@
 import { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import { PrismaClient } from '@solana-arbitrage/database';
 import { AppConfig } from '@solana-arbitrage/config';
+import { LatencyProfiler } from '@solana-arbitrage/arbitrage-engine';
 
 export interface SystemRouteOptions {
   prisma: PrismaClient;
   config: AppConfig;
+  profiler?: LatencyProfiler | undefined;
 }
 
 export const systemRoutes: FastifyPluginAsync<SystemRouteOptions> = async (
@@ -52,6 +54,16 @@ export const systemRoutes: FastifyPluginAsync<SystemRouteOptions> = async (
         opportunityScanIntervalMs: options.config.OPPORTUNITY_SCAN_INTERVAL_MS,
       },
     };
+  });
+
+  fastify.get('/system/latency-breakdown', async () => {
+    if (!options.profiler) {
+      return {
+        profitability_calc_us: { count: 0, minUs: 0, p50Us: 0, p95Us: 0, p99Us: 0, maxUs: 0, meanUs: 0 },
+        risk_evaluation_us: { count: 0, minUs: 0, p50Us: 0, p95Us: 0, p99Us: 0, maxUs: 0, meanUs: 0 },
+      };
+    }
+    return options.profiler.getAllStageMetrics();
   });
 
   fastify.post('/system/kill-switch', async (_request, reply) => {

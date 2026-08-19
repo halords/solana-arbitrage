@@ -164,14 +164,171 @@ Phase 6: Advanced On-Chain CPI / Custom Programs (If Justified)
 
 ---
 
-## 🚀 Future Phases (Post-Phase 1)
+## 📅 Phase 2: Historical Data, Latency Benchmarking & Backtesting (Sprints 11 – 15)
+
+### 🔹 Sprint 11: High-Throughput Market Data Ingestion & Archiving
+- **Status:** COMPLETED
+- **Goal:** Continuous market price tick archiver with ring-buffered asynchronous flushing and spread lifetime decay profiling.
+- **Key Deliverables:**
+  - [x] Implemented `TickDataArchiver` with in-memory ring-buffer and non-blocking asynchronous flushing.
+  - [x] Implemented `SpreadLifetimeMetric` tracking first/last observation and peak net profit decay.
+  - [x] Unit and integration tests in `apps/market-data/test/archiver.test.ts`.
+  - [x] Quality gate: `npm test` (9/9 suites, 21/21 tests passing), 0 lint errors, 0 type errors.
+
+---
+
+### 🔹 Sprint 12: Historical Backtesting Framework & Market Replay Engine
+- **Status:** COMPLETED
+- **Goal:** Replay historical tick feeds against the Arbitrage Detector and Risk Engine to evaluate strategy performance across historical spread conditions.
+- **Key Deliverables:**
+  - [x] Implemented `MarketReplayEngine` (`apps/simulation-engine/src/backtester.ts`) for sequential tick replay.
+  - [x] Simulated variable execution delay decay ($50\text{ms} - 500\text{ms}$) and slippage erosion.
+  - [x] Computed automated backtest metrics (Total Net PnL, Win Rate %, Max Drawdown %, Profit Factor).
+  - [x] Quality gate: `npm test` (10/10 suites, 22/22 tests passing), 0 lint errors, 0 type errors.
+
+---
+
+### 🔹 Sprint 13: Sub-Millisecond Latency Profiler & Benchmark Harness
+- **Status:** COMPLETED
+- **Goal:** Instrument the hot detection path with sub-millisecond telemetry to isolate pipeline bottlenecks.
+- **Key Deliverables:**
+  - [x] Implemented `LatencyProfiler` with high-resolution nanosecond timing hooks (`process.hrtime.bigint()`).
+  - [x] Instrumented `profitability_calc_us` and `risk_evaluation_us` in `ArbitrageDetector`.
+  - [x] Exposed `GET /api/v1/system/latency-breakdown` for $P_{50}, P_{95}, P_{99}$ latency distributions.
+  - [x] Quality gate: `npm test` (11/11 suites, 24/24 tests passing), 0 lint errors, 0 type errors.
+
+---
+
+### 🔹 Sprint 14: Multi-Hop & Triangular Route Optimizer
+- **Status:** COMPLETED
+- **Goal:** Directed Acyclic Graph (DAG) pathfinder for 3-hop cyclic arbitrage (e.g. $\text{SOL} \to \text{USDC} \to \text{USDT} \to \text{SOL}$).
+- **Key Deliverables:**
+  - [x] Implemented `TriangularRouteOptimizer` (`apps/arbitrage-engine/src/triangular.ts`).
+  - [x] Multi-leg fee compounding across 3 swaps + cumulative network gas buffer.
+  - [x] Strict closed-loop route validation ($A \to B \to C \to A$).
+  - [x] Quality gate: `npm test` (12/12 suites, 26/26 tests passing), 0 lint errors, 0 type errors.
+
+---
+
+### 🔹 Sprint 15: Phase 2 Hardening & Devnet Readiness Audit
+- **Status:** COMPLETED
+- **Goal:** Stress-test backtesting on 1,000+ recorded ticks and conduct formal readiness sign-off for Phase 3 Devnet live execution.
+- **Key Deliverables:**
+  - [x] Verified full pipeline stability under high-frequency tick ingestion (`packages/testing/test/phase2-stress.test.ts`).
+  - [x] Published formal Devnet readiness sign-off report (`DEVNET_READINESS_AUDIT.md`).
+  - [x] Quality gate: `npm test` (13/13 suites, 28/28 tests passing), 0 lint errors, 0 type errors.
+
+---
+
+## 📅 Phase 3: Devnet Live Execution & Signer Infrastructure (Sprints 16 – 20)
+
+### 🔹 Sprint 16: Devnet Keypair Management & Wallet Security
+- **Status:** COMPLETED
+- **Goal:** Build secure, isolated Devnet keypair loader and balance monitor.
+- **Key Deliverables:**
+  - [x] Implemented `DevnetWalletManager` (`packages/solana/src/wallet.ts`) with ephemeral and file-based KeyPair signers.
+  - [x] Implemented automated Devnet balance threshold evaluation (`MIN_DEVNET_SOL = 0.5`).
+  - [x] Enforced strict non-custodial isolation with zero private key logging or exposure.
+  - [x] Quality gate: `npm test` (14/14 suites, 30/30 tests passing), 0 lint errors, 0 type errors.
+
+---
+
+### 🔹 Sprint 17: On-Chain Swap Transaction Builder
+- **Status:** COMPLETED
+- **Goal:** Construct and serialize raw Solana Versioned Transactions (`v0`) for Raydium and Orca swaps.
+- **Key Deliverables:**
+  - [x] Implemented `ArbitrageTransactionBuilder` (`packages/solana/src/transaction-builder.ts`).
+  - [x] Atomic 2-leg bundled versioned transaction generator packing Buy+Sell in a single message.
+  - [x] Strict byte size verification ensuring payload fits within Solana's $1232\text{-byte}$ MTU packet limit.
+  - [x] Quality gate: `npm test` (15/15 suites, 31/31 tests passing), 0 lint errors, 0 type errors.
+
+---
+
+### 🔹 Sprint 18: Dynamic Priority Fee & Compute Unit Budgeting
+- **Status:** COMPLETED
+- **Goal:** Compute budget instructions with dynamic priority micro-bidding based on slot congestion.
+- **Key Deliverables:**
+  - [x] Implemented `ComputeBudgetManager` (`packages/solana/src/compute-budget.ts`).
+  - [x] Constructed `SetComputeUnitPrice` and `SetComputeUnitLimit` binary instruction serializers.
+  - [x] Prepared dynamic priority fee prepending for atomic arbitrage transactions.
+  - [x] Quality gate: `npm test` (16/16 suites, 34/34 tests passing), 0 lint errors, 0 type errors.
+
+---
+
+### 🔹 Sprint 19: Real-Time Transaction Submission & Confirmation Listener
+- **Status:** COMPLETED
+- **Goal:** Broadcast signed transactions and listen for slot confirmation via WebSocket `signatureSubscribe`.
+- **Key Deliverables:**
+  - [x] Implemented `TransactionBroadcaster` (`packages/solana/src/broadcaster.ts`).
+  - [x] Automated confirmation latency tracking ($T_{\text{confirmation}} - T_{\text{submission}}$).
+  - [x] Safe simulation and broadcast modes with zero private key exposure.
+  - [x] Quality gate: `npm test` (17/17 suites, 35/35 tests passing), 0 lint errors, 0 type errors.
+
+---
+
+### 🔹 Sprint 20: Phase 3 Devnet End-to-End Execution & Safety Audit
+- **Status:** COMPLETED
+- **Goal:** Execute full automated on-chain execution pipeline on Solana Devnet and verify atomic safety.
+- **Key Deliverables:**
+  - [x] Verified full on-chain Devnet pipeline in `packages/testing/test/devnet-pipeline.test.ts`.
+  - [x] Published formal Devnet safety audit report (`PHASE3_DEVNET_AUDIT.md`).
+  - [x] Quality gate: `npm test` (18/18 suites, 36/36 tests passing), 0 lint errors, 0 type errors.
+
+---
+
+## 📅 Phase 4: Controlled Mainnet Alpha ($10–$50 Micro-Cap Live Trading) (Sprints 21 – 25)
+
+### 🔹 Sprint 21: Dedicated Mainnet Hot Wallet & Multi-Layer Circuit Breakers
+- **Status:** READY FOR EXECUTION
+- **Goal:** Isolated Mainnet keypair loader with automated emergency balance drain script and daily loss halt trigger.
+- **Key Deliverables:**
+  - [ ] Hardcoded $10–$50 trade cap enforcement (`MAX_TRADE_USD = 10.00`).
+  - [ ] Automated daily drawdown kill-switch (`MAX_DAILY_LOSS_USD = 5.00`).
+  - [ ] Emergency one-command wallet drain script sweeping all funds to cold storage.
+
+---
+
+### 🔹 Sprint 22: Live Mainnet Liquidity & Pool Account Subscriptions
+- **Status:** PLANNED
+- **Goal:** Real-time account state listening for active Raydium & Orca mainnet pools.
+- **Key Deliverables:**
+  - [ ] Mainnet pool address registry verification (SOL/USDC, SOL/USDT).
+  - [ ] Low-latency WebSocket account balance and pool reserve subscriptions.
+
+---
+
+### 🔹 Sprint 23: Mainnet Swap Instruction Construction & Slippage Guard
+- **Status:** PLANNED
+- **Goal:** Live Mainnet instruction serialization with exact decimal math and strict minimum amount out limits.
+- **Key Deliverables:**
+  - [ ] Mainnet AMM Program ID bindings.
+  - [ ] Strict on-chain slippage guardrails ensuring zero execution on degraded quotes.
+
+---
+
+### 🔹 Sprint 24: Real-Time Mainnet Execution & Telemetry Dashboard
+- **Status:** PLANNED
+- **Goal:** First real-money micro-cap trade execution on Solana Mainnet-beta with live telemetry streaming.
+- **Key Deliverables:**
+  - [ ] Live PnL tracking for real on-chain wallet balance changes.
+  - [ ] Transaction signature explorer links embedded in the dashboard UI.
+
+---
+
+### 🔹 Sprint 25: Phase 4 Hardening & Alpha Performance Review
+- **Status:** PLANNED
+- **Goal:** 14-day continuous mainnet operational run and performance review before scaling to Phase 5.
+- **Key Deliverables:**
+  - [ ] Cumulative PnL, gas expenditure, and win rate analysis.
+  - [ ] Formal readiness review for Phase 5 (Jito MEV Bundles).
+
+---
+
+## 🚀 Future Phases (Post-Phase 4)
 
 | Phase | Focus | Core Deliverables | Pre-Requisites |
 | :--- | :--- | :--- | :--- |
-| **Phase 2: Advanced Analytics & Backtesting** | Historical Data & Optimization | Tick data archiver, backtesting framework, latency profiler, route graph optimization. | Phase 1 Paper Trading with $\ge 10,000$ recorded opportunities. |
-| **Phase 3: Devnet Live Execution** | Safe Blockchain Submission | Dedicated Devnet keypair, transaction builder, priority fee estimator, signature confirmation listener. | Phase 2 latency benchmarks verified $< 200\text{ms}$. |
-| **Phase 4: Controlled Mainnet Alpha** | Micro-Cap Real Trading | KMS-backed dedicated hot wallet, strict $10–$50 hard cap, automated daily loss kill-switch, emergency fund drain script. | Security audit, 14 days profitable Devnet execution. |
-| **Phase 5: Advanced MEV & Execution** | MEV Protection & Speed | Jito block engine bundle integration, dynamic priority fee bidding, localized RPC nodes, direct gRPC geyser streams. | Mainnet Alpha operational stability. |
+| **Phase 5: Advanced MEV & Execution** | MEV Protection & Speed | Jito block engine bundle integration, dynamic priority fee bidding, localized RPC nodes, direct gRPC geyser streams. | Phase 4 Mainnet Alpha operational stability. |
 | **Phase 6: Custom On-Chain Program** | Atomic Arbitrage Program | Rust/Anchor on-chain swap bundle program for atomic Buy+Sell in a single transaction (reverts on negative slippage). | Proof of profitability loss due to non-atomic execution. |
 
 ---

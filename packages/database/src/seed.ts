@@ -80,11 +80,13 @@ export async function seedDatabase(prisma: PrismaClient): Promise<void> {
 }
 
 const prisma = new PrismaClient();
-seedDatabase(prisma)
-  .catch((e: unknown) => {
-    console.error('❌ Error during database seeding:', e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+if (process.env.NODE_ENV !== 'test' && !process.env.VITEST) {
+  seedDatabase(prisma)
+    .catch((e: unknown) => {
+      console.error('❌ Error during database seeding:', e);
+      process.exit(1);
+    })
+    .finally(async () => {
+      await prisma.$disconnect();
+    });
+}

@@ -3,8 +3,8 @@ import { createLogger } from '@solana-arbitrage/logging';
 import { PrismaClient, RedisRepository, checkDatabaseHealth } from '@solana-arbitrage/database';
 import { createSolanaConnection, SolanaHealthMonitor, SolanaSubscriptionManager } from '@solana-arbitrage/solana';
 import { DexAdapterRegistry, RaydiumAdapter, OrcaAdapter } from '@solana-arbitrage/dex-adapters';
-import { TokenAndPoolRegistry, MarketDataPoller } from '@solana-arbitrage/market-data';
-import { ProfitabilityEngine, RiskEngine, ArbitrageDetector } from '@solana-arbitrage/arbitrage-engine';
+import { TokenAndPoolRegistry, MarketDataPoller, TickDataArchiver } from '@solana-arbitrage/market-data';
+import { ProfitabilityEngine, RiskEngine, ArbitrageDetector, LatencyProfiler } from '@solana-arbitrage/arbitrage-engine';
 import { TransactionSimulator, PaperTradingEngine, PerformanceCalculator } from '@solana-arbitrage/simulation-engine';
 import { buildServer } from './server.js';
 import { Slot } from '@solana/kit';
@@ -47,12 +47,21 @@ async function main(): Promise<void> {
   adapterRegistry.register(orcaAdapter);
 
   const tokenRegistry = new TokenAndPoolRegistry(prisma, logger);
+  
+  // 4. Initialize Market Poller & Archiver
+  const archiver = new TickDataArchiver(prisma, {
+    maxBufferSize: 500,
+    flushIntervalMs: 1000,
+    logger,
+  });
+  archiver.start();
   await tokenRegistry.refreshRegistry();
 
-  // 4. Initialize Arbitrage & Simulation Engines
+  // 5. Initialize Arbitrage & Simulation Engines
+  const profiler = new LatencyProfiler(1000);
   const profitabilityEngine = new ProfitabilityEngine();
   const riskEngine = new RiskEngine(config);
-  const detector = new ArbitrageDetector(profitabilityEngine, riskEngine, redisRepo, logger);
+  const detector = new ArbitrageDetector(profitabilityEngine, riskEngine, redisRepo, logger, profiler);
   const simulator = new TransactionSimulator();
   const paperTrader = new PaperTradingEngine(simulator, logger);
   const performanceCalc = new PerformanceCalculator();
@@ -166,6 +175,7 @@ async function main(): Promise<void> {
     prisma,
     redis: redisRepo,
     solanaMonitor,
+    profiler,
   });
 
   const port = config.APP_PORT || 3000;

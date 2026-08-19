@@ -27,6 +27,9 @@ export const EnvSchema = z.object({
 
   TRADING_MODE: z.enum(['paper', 'live']).default('paper'),
   WALLET_ENABLED: z.coerce.boolean().default(false),
+  DEVNET_PRIVATE_KEY: z.string().optional(),
+  DEVNET_KEYPAIR_PATH: z.string().optional(),
+  MIN_DEVNET_SOL: z.coerce.number().default(0.5),
 
   INITIAL_CAPITAL_USD: z.coerce.number().default(10.0),
   MIN_PROFIT_USD: z.coerce.number().default(0.01),

@@ -1,6 +1,7 @@
 import { Quote, ArbitrageOpportunity, TokenPair } from '@solana-arbitrage/domain';
 import { ProfitabilityEngine } from './profitability.js';
 import { RiskEngine } from './risk.js';
+import { LatencyProfiler } from './profiler.js';
 import { RedisRepository } from '@solana-arbitrage/database';
 import { Logger } from 'pino';
 
@@ -10,18 +11,21 @@ export class ArbitrageDetector {
   private readonly profitabilityEngine: ProfitabilityEngine;
   private readonly riskEngine: RiskEngine;
   private readonly redis: RedisRepository;
+  private readonly profiler: LatencyProfiler | undefined;
   private readonly logger: Logger | undefined;
 
   constructor(
     profitabilityEngine: ProfitabilityEngine,
     riskEngine: RiskEngine,
     redis: RedisRepository,
-    logger?: Logger
+    logger?: Logger,
+    profiler?: LatencyProfiler
   ) {
     this.profitabilityEngine = profitabilityEngine;
     this.riskEngine = riskEngine;
     this.redis = redis;
     this.logger = logger;
+    this.profiler = profiler;
   }
 
   public generateFingerprint(
@@ -56,12 +60,22 @@ export class ArbitrageDetector {
       return null;
     }
 
-    const optimal = this.profitabilityEngine.optimizeTradeSize(buyQuote, sellQuote);
+    const optimal = this.profiler
+      ? this.profiler.measure('profitability_calc_us', () =>
+          this.profitabilityEngine.optimizeTradeSize(buyQuote, sellQuote)
+        )
+      : this.profitabilityEngine.optimizeTradeSize(buyQuote, sellQuote);
+
     if (!optimal || !optimal.isProfitable) {
       return null;
     }
 
-    const riskResult = this.riskEngine.evaluateOpportunity(optimal, buyQuote, sellQuote);
+    const riskResult = this.profiler
+      ? this.profiler.measure('risk_evaluation_us', () =>
+          this.riskEngine.evaluateOpportunity(optimal, buyQuote, sellQuote)
+        )
+      : this.riskEngine.evaluateOpportunity(optimal, buyQuote, sellQuote);
+
     if (!riskResult.isAllowed) {
       return null;
     }

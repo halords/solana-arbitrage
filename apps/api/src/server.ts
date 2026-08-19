@@ -5,6 +5,7 @@ import rateLimit from '@fastify/rate-limit';
 import { AppConfig } from '@solana-arbitrage/config';
 import { PrismaClient, RedisRepository } from '@solana-arbitrage/database';
 import { SolanaHealthMonitor } from '@solana-arbitrage/solana';
+import { LatencyProfiler } from '@solana-arbitrage/arbitrage-engine';
 import { healthRoutes } from './routes/health.js';
 import { marketRoutes } from './routes/market.js';
 import { opportunityRoutes } from './routes/opportunities.js';
@@ -15,6 +16,7 @@ export interface BuildServerOptions {
   prisma: PrismaClient;
   redis: RedisRepository;
   solanaMonitor: SolanaHealthMonitor;
+  profiler?: LatencyProfiler;
 }
 
 export function buildServer(options: BuildServerOptions): FastifyInstance {
@@ -55,6 +57,7 @@ export function buildServer(options: BuildServerOptions): FastifyInstance {
       void v1.register(systemRoutes, {
         prisma: options.prisma,
         config: options.config,
+        profiler: options.profiler,
       });
     },
     { prefix: '/api/v1' }

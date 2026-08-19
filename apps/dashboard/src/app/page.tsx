@@ -53,15 +53,15 @@ export default function DashboardPage(): JSX.Element {
 
   const fetchLiveStatus = async (): Promise<void> => {
     try {
-      const [healthRes, statusRes, perfRes, oppsRes] = await Promise.all([
+      const [healthRes, statusRes, perfRes, oppsRes] = await Promise.allSettled([
         window.fetch('http://localhost:3000/api/v1/health'),
         window.fetch('http://localhost:3000/api/v1/system/status'),
         window.fetch('http://localhost:3000/api/v1/performance'),
         window.fetch('http://localhost:3000/api/v1/opportunities?limit=5'),
       ]);
 
-      if (healthRes.ok) {
-        const healthData = await healthRes.json() as {
+      if (healthRes.status === 'fulfilled' && healthRes.value.ok) {
+        const healthData = await healthRes.value.json() as {
           latency?: { solanaRpcMs?: number; databaseMs?: number };
         };
         setMetrics((prev) => ({
@@ -70,8 +70,8 @@ export default function DashboardPage(): JSX.Element {
         }));
       }
 
-      if (statusRes.ok) {
-        const statusData = await statusRes.json() as {
+      if (statusRes.status === 'fulfilled' && statusRes.value.ok) {
+        const statusData = await statusRes.value.json() as {
           currentSlot?: string;
           solanaCluster?: string;
           tradingMode?: string;
@@ -84,8 +84,8 @@ export default function DashboardPage(): JSX.Element {
         }));
       }
 
-      if (perfRes.ok) {
-        const perfData = await perfRes.json() as {
+      if (perfRes.status === 'fulfilled' && perfRes.value.ok) {
+        const perfData = await perfRes.value.json() as {
           totalOpportunities?: number;
           paperTrades?: number;
           totalPaperProfitUsd?: string;
@@ -100,15 +100,15 @@ export default function DashboardPage(): JSX.Element {
         }));
       }
 
-      if (oppsRes.ok) {
-        const oppsData = await oppsRes.json() as Array<{
+      if (oppsRes.status === 'fulfilled' && oppsRes.value.ok) {
+        const oppsData = await oppsRes.value.json() as Array<{
           id: string;
-          buyDex: { name: string };
-          sellDex: { name: string };
-          inputToken: { symbol: string };
-          outputToken: { symbol: string };
+          buyDex?: { name: string };
+          sellDex?: { name: string };
+          inputToken?: { symbol: string };
+          outputToken?: { symbol: string };
           netProfit: string | number;
-          roiPercent: string | number;
+          roi: string | number;
           tradeAmount: string | number;
         }>;
 
@@ -120,7 +120,7 @@ export default function DashboardPage(): JSX.Element {
             buyPrice: 0,
             sellPrice: 0,
             profitUsd: parseFloat(String(o.netProfit ?? '0')),
-            roiPercent: parseFloat(String((o as Record<string, unknown>).roi ?? o.roiPercent ?? '0')),
+            roiPercent: parseFloat(String(o.roi ?? '0')),
             tradeSizeUsd: parseFloat(String(o.tradeAmount ?? '10')),
           }));
           setMetrics((prev) => ({
