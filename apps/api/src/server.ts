@@ -1,7 +1,6 @@
 import Fastify, { FastifyInstance } from 'fastify';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
-import rateLimit from '@fastify/rate-limit';
 import { AppConfig } from '@solana-arbitrage/config';
 import { PrismaClient, RedisRepository } from '@solana-arbitrage/database';
 import { SolanaHealthMonitor } from '@solana-arbitrage/solana';
@@ -27,13 +26,9 @@ export function buildServer(options: BuildServerOptions): FastifyInstance {
 
   const startTime = Date.now();
 
-  // Security plugins
+// Security plugins
   void server.register(cors, { origin: true });
   void server.register(helmet, { contentSecurityPolicy: false });
-  void server.register(rateLimit, {
-    max: options.config.API_RATE_LIMIT,
-    timeWindow: '1 minute',
-  });
 
   // API v1 route prefix
   void server.register(

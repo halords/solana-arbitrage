@@ -138,7 +138,7 @@ export default function DashboardPage(): JSX.Element {
     void fetchLiveStatus();
     const interval = setInterval(() => {
       void fetchLiveStatus();
-    }, 1000);
+    }, 2500);
     return (): void => clearInterval(interval);
   }, []);
 
