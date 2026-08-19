@@ -118,8 +118,9 @@ export const systemRoutes: FastifyPluginAsync<SystemRouteOptions> = async (
 
     for (let i = 0; i < ticksCount; i++) {
       const basePrice = 180.0;
-      const raydiumOffset = (Math.sin(i / 10) * 0.45);
-      const orcaOffset = (Math.cos(i / 8) * 0.65);
+      // Realistic DEX price divergence waves (0.5% - 2.5% spread variation)
+      const raydiumOffset = Math.sin(i / 6) * 1.85;
+      const orcaOffset = Math.cos(i / 5) * 2.20;
 
       const priceA = (basePrice + raydiumOffset).toFixed(4);
       const priceB = (basePrice + orcaOffset).toFixed(4);
