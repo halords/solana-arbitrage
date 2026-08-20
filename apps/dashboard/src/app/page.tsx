@@ -561,8 +561,8 @@ function RiskEngineConfigSection(): JSX.Element {
     // 🧠 Smart Proportional Auto-Scaling Formula:
     // 1. Min Profit scales with capital: 0.1% of trade cap (e.g. $10 -> $0.01, $50 -> $0.05, $100 -> $0.10)
     const autoMinProfit = Math.max(0.005, parseFloat((validMax * 0.001).toFixed(4)));
-    // 2. Max Daily Loss scales to 1.0x trade cap (e.g. $10 cap -> $10 halt, $100 cap -> $100 halt)
-    const autoDailyLoss = parseFloat(validMax.toFixed(2));
+    // 2. Max Daily Loss Halt is ALWAYS 50% of the trade capital (e.g. $10 cap -> $5.00 halt, $100 cap -> $50.00 halt)
+    const autoDailyLoss = parseFloat((validMax * 0.5).toFixed(2));
 
     setConfig((prev) => ({
       ...prev,

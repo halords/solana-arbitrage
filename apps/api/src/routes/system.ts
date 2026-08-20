@@ -208,7 +208,7 @@ export const systemRoutes: FastifyPluginAsync<SystemRouteOptions> = async (
             minProfitUsd: options.config.MIN_PROFIT_USD ?? 0.01,
             minRoiPercent: options.config.MIN_ROI_PERCENT ?? 0.05,
             maxSlippagePercent: options.config.MAX_SLIPPAGE_PERCENT ?? 0.3,
-            maxDailyLossUsd: options.config.MAX_DAILY_LOSS_USD ?? 10.0,
+            maxDailyLossUsd: options.config.MAX_DAILY_LOSS_USD ?? 5.0,
             maxConsecutiveLosses: options.config.MAX_CONSECUTIVE_LOSSES ?? 5,
             isActive: true,
           },
