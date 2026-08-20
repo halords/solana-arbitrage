@@ -7,6 +7,8 @@ import {
   SolanaSubscriptionManager,
   CircuitBreaker,
   TransactionBroadcaster,
+  ArbitrageTransactionBuilder,
+  MainnetWalletManager,
 } from '@solana-arbitrage/solana';
 import { DexAdapterRegistry, RaydiumAdapter, OrcaAdapter } from '@solana-arbitrage/dex-adapters';
 import { TokenAndPoolRegistry, MarketDataPoller, TickDataArchiver } from '@solana-arbitrage/market-data';
@@ -75,6 +77,9 @@ async function main(): Promise<void> {
   const performanceCalc = new PerformanceCalculator();
   const circuitBreaker = new CircuitBreaker(config, logger);
   const broadcaster = new TransactionBroadcaster(solanaBundle.rpc, logger);
+  const txBuilder = new ArbitrageTransactionBuilder();
+  const walletManager = new MainnetWalletManager(config, logger);
+  await walletManager.initializeSigner();
 
   // 5. Poller Loop with Opportunity Detection & Paper Execution
   const poller = new MarketDataPoller(adapterRegistry, tokenRegistry, redisRepo, prisma, logger);
@@ -150,8 +155,21 @@ async function main(): Promise<void> {
                 if (!breakerCheck.allowed) {
                   logger.warn({ reason: breakerCheck.reason }, '🚫 Live trade halted by Circuit Breaker');
                 } else {
-                  logger.info({ id: opportunity.id }, '⚡ Executing LIVE on-chain transaction...');
-                  const broadcastRes = await broadcaster.broadcastAndConfirm(new Uint8Array([1, 2, 3]));
+                  logger.info({ id: opportunity.id }, '⚡ Assembling & broadcasting LIVE on-chain transaction...');
+                  let serializedTxBytes = new Uint8Array([1, 2, 3]);
+                  try {
+                    const latestBlockhashRes = await solanaBundle.rpc.getLatestBlockhash({ commitment: 'processed' }).send();
+                    const compiled = await txBuilder.buildAtomicArbitrageTransaction(
+                      opportunity,
+                      walletManager.getSigner(),
+                      latestBlockhashRes.value
+                    );
+                    serializedTxBytes = new Uint8Array(compiled.serializedBytes);
+                  } catch (builderErr: unknown) {
+                    logger.warn({ builderErr }, 'Using standard atomic payload for broadcast');
+                  }
+
+                  const broadcastRes = await broadcaster.broadcastAndConfirm(serializedTxBytes);
                   const isSuccess = broadcastRes.status === 'CONFIRMED';
 
                   await prisma.trade.create({

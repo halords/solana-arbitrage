@@ -193,6 +193,108 @@ export const systemRoutes: FastifyPluginAsync<SystemRouteOptions> = async (
     });
   });
 
+  // Dynamic Trading Config & Sizing Management
+  fastify.get('/system/config', async (_request, reply) => {
+    try {
+      let cfg = await options.prisma.tradingConfig.findFirst({
+        where: { isActive: true },
+        orderBy: { updatedAt: 'desc' },
+      });
+
+      if (!cfg) {
+        cfg = await options.prisma.tradingConfig.create({
+          data: {
+            maxTradeUsd: options.config.MAX_TRADE_USD ?? 10.0,
+            minProfitUsd: options.config.MIN_PROFIT_USD ?? 0.01,
+            minRoiPercent: options.config.MIN_ROI_PERCENT ?? 0.05,
+            maxSlippagePercent: options.config.MAX_SLIPPAGE_PERCENT ?? 0.3,
+            maxDailyLossUsd: options.config.MAX_DAILY_LOSS_USD ?? 10.0,
+            maxConsecutiveLosses: options.config.MAX_CONSECUTIVE_LOSSES ?? 5,
+            isActive: true,
+          },
+        });
+      }
+
+      return reply.send({
+        success: true,
+        config: {
+          id: cfg.id,
+          maxTradeUsd: Number(cfg.maxTradeUsd),
+          minProfitUsd: Number(cfg.minProfitUsd),
+          minRoiPercent: Number(cfg.minRoiPercent),
+          maxSlippagePercent: Number(cfg.maxSlippagePercent),
+          maxDailyLossUsd: Number(cfg.maxDailyLossUsd),
+          maxConsecutiveLosses: cfg.maxConsecutiveLosses,
+          updatedAt: cfg.updatedAt,
+        },
+      });
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      return reply.status(500).send({ success: false, error: errorMessage });
+    }
+  });
+
+  fastify.put('/system/config', async (request, reply) => {
+    try {
+      const body = request.body as {
+        maxTradeUsd?: number;
+        minProfitUsd?: number;
+        minRoiPercent?: number;
+        maxSlippagePercent?: number;
+        maxDailyLossUsd?: number;
+        maxConsecutiveLosses?: number;
+      };
+
+      let cfg = await options.prisma.tradingConfig.findFirst({
+        where: { isActive: true },
+      });
+
+      if (!cfg) {
+        cfg = await options.prisma.tradingConfig.create({
+          data: {
+            maxTradeUsd: body.maxTradeUsd ?? 10.0,
+            minProfitUsd: body.minProfitUsd ?? 0.01,
+            minRoiPercent: body.minRoiPercent ?? 0.05,
+            maxSlippagePercent: body.maxSlippagePercent ?? 0.3,
+            maxDailyLossUsd: body.maxDailyLossUsd ?? 10.0,
+            maxConsecutiveLosses: body.maxConsecutiveLosses ?? 5,
+            isActive: true,
+          },
+        });
+      } else {
+        cfg = await options.prisma.tradingConfig.update({
+          where: { id: cfg.id },
+          data: {
+            ...(body.maxTradeUsd !== undefined ? { maxTradeUsd: body.maxTradeUsd } : {}),
+            ...(body.minProfitUsd !== undefined ? { minProfitUsd: body.minProfitUsd } : {}),
+            ...(body.minRoiPercent !== undefined ? { minRoiPercent: body.minRoiPercent } : {}),
+            ...(body.maxSlippagePercent !== undefined ? { maxSlippagePercent: body.maxSlippagePercent } : {}),
+            ...(body.maxDailyLossUsd !== undefined ? { maxDailyLossUsd: body.maxDailyLossUsd } : {}),
+            ...(body.maxConsecutiveLosses !== undefined ? { maxConsecutiveLosses: body.maxConsecutiveLosses } : {}),
+          },
+        });
+      }
+
+      return reply.send({
+        success: true,
+        message: 'Trading capital and risk limits updated in database successfully',
+        config: {
+          id: cfg.id,
+          maxTradeUsd: Number(cfg.maxTradeUsd),
+          minProfitUsd: Number(cfg.minProfitUsd),
+          minRoiPercent: Number(cfg.minRoiPercent),
+          maxSlippagePercent: Number(cfg.maxSlippagePercent),
+          maxDailyLossUsd: Number(cfg.maxDailyLossUsd),
+          maxConsecutiveLosses: cfg.maxConsecutiveLosses,
+          updatedAt: cfg.updatedAt,
+        },
+      });
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      return reply.status(500).send({ success: false, error: errorMessage });
+    }
+  });
+
   fastify.post('/system/clear-trades', async (_request, reply) => {
     await options.prisma.trade.deleteMany();
     await options.prisma.opportunity.deleteMany();

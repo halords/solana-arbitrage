@@ -46,13 +46,13 @@ export class AlertingService {
         ],
       };
 
-      await fetch(this.webhookUrl, {
+      const res = await globalThis.fetch(this.webhookUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
 
-      return true;
+      return res.ok;
     } catch (err: unknown) {
       this.logger?.warn({ err }, 'Failed to dispatch webhook alert');
       return false;

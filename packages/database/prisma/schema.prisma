@@ -214,3 +214,33 @@ model SystemEvent {
   @@index([level])
   @@map("system_events")
 }
+
+// 8.11 Cold Storage Wallets
+model ColdStorageWallet {
+  id          String   @id @default(uuid()) @db.Uuid
+  label       String   @db.VarChar(100)
+  address     String   @unique @db.VarChar(64)
+  isDefault   Boolean  @default(false) @map("is_default")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  @@index([isDefault])
+  @@map("cold_storage_wallets")
+}
+
+// 8.12 Dynamic Trading Configuration & Capital Sizing
+model TradingConfig {
+  id                  String   @id @default(uuid()) @db.Uuid
+  maxTradeUsd         Decimal  @default(10.00) @map("max_trade_usd") @db.Decimal(18, 4)
+  minProfitUsd        Decimal  @default(0.01) @map("min_profit_usd") @db.Decimal(18, 4)
+  minRoiPercent       Decimal  @default(0.05) @map("min_roi_percent") @db.Decimal(10, 4)
+  maxSlippagePercent  Decimal  @default(0.30) @map("max_slippage_percent") @db.Decimal(10, 4)
+  maxDailyLossUsd     Decimal  @default(10.00) @map("max_daily_loss_usd") @db.Decimal(18, 4)
+  maxConsecutiveLosses Int     @default(5) @map("max_consecutive_losses")
+  isActive            Boolean  @default(true) @map("is_active")
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt           DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  @@map("trading_configs")
+}

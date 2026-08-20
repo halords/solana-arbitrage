@@ -73,8 +73,8 @@ export class MainnetWalletManager {
 
     // Export keypair bytes for persistence
     const keyPairBytes = new Uint8Array(64);
-    const privateKeyBytes = new Uint8Array(await crypto.subtle.exportKey('pkcs8', this.signer.keyPair.privateKey));
-    const publicKeyBytes = new Uint8Array(await crypto.subtle.exportKey('raw', this.signer.keyPair.publicKey));
+    const privateKeyBytes = new Uint8Array(await globalThis.crypto.subtle.exportKey('pkcs8', this.signer.keyPair.privateKey));
+    const publicKeyBytes = new Uint8Array(await globalThis.crypto.subtle.exportKey('raw', this.signer.keyPair.publicKey));
     // Standard Solana keypair format: 64 bytes = 32 private + 32 public
     keyPairBytes.set(privateKeyBytes.slice(-32), 0);
     keyPairBytes.set(publicKeyBytes, 32);

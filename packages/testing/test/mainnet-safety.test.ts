@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import {
-  MainnetWalletManager,
   CircuitBreaker,
   EmergencyDrainService,
   ArbitrageTransactionBuilder,
@@ -8,7 +7,7 @@ import {
 import { loadConfig } from '@solana-arbitrage/config';
 import { ArbitrageOpportunity } from '@solana-arbitrage/domain';
 import Decimal from 'decimal.js';
-import { Address, generateKeyPairSigner } from '@solana/kit';
+import { Address, generateKeyPairSigner, Blockhash, KeyPairSigner, Rpc, SolanaRpcApi } from '@solana/kit';
 
 describe('Phase 4 Mainnet Alpha Safety Controls', () => {
   const config = loadConfig({
@@ -42,14 +41,14 @@ describe('Phase 4 Mainnet Alpha Safety Controls', () => {
     const drainService = new EmergencyDrainService();
     const mockSigner = { address: 'Signer111111111111111111111111111111111111' as Address };
     const mockRpc = {
-      getBalance: () => ({
-        send: async () => ({ value: BigInt(1000) }), // Less than 5000 fee
+      getBalance: (): { send: () => Promise<{ value: bigint }> } => ({
+        send: async (): Promise<{ value: bigint }> => ({ value: BigInt(1000) }), // Less than 5000 fee
       }),
     };
 
     const res = await drainService.buildDrainTransaction(
-      mockRpc as any,
-      mockSigner as any,
+      mockRpc as unknown as Rpc<SolanaRpcApi>,
+      mockSigner as unknown as KeyPairSigner,
       'ColdStorage1111111111111111111111111111111111' as Address
     );
 
@@ -102,7 +101,7 @@ describe('Phase 4 Mainnet Alpha Safety Controls', () => {
     const mockSigner = await generateKeyPairSigner();
 
     const mockBlockhash = {
-      blockhash: '4uQeVj5tqViQh7yWWGStvkEG1Zmhx6uasJtWCJziofM' as any,
+      blockhash: '4uQeVj5tqViQh7yWWGStvkEG1Zmhx6uasJtWCJziofM' as unknown as Blockhash,
       lastValidBlockHeight: BigInt(300000),
     };
 

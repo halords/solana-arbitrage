@@ -65,6 +65,7 @@ export function buildServer(options: BuildServerOptions): FastifyInstance {
 
       void v1.register(walletRoutes, {
         config: options.config,
+        prisma: options.prisma,
         walletManager: options.walletManager,
         circuitBreaker: options.circuitBreaker,
         drainService: options.drainService,

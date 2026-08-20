@@ -1,4 +1,5 @@
-import { generateKeyPairSigner, createKeyPairSignerFromBytes, KeyPairSigner, getBase58Decoder } from '@solana/kit';
+/* eslint-disable no-console */
+import { createKeyPairSignerFromBytes, KeyPairSigner, getBase58Decoder } from '@solana/kit';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -11,15 +12,15 @@ async function generateOrGetHotWallet(): Promise<void> {
   if (fs.existsSync(savePath)) {
     try {
       const raw = fs.readFileSync(savePath, 'utf-8');
-      const parsed = JSON.parse(raw);
+      const parsed = JSON.parse(raw) as { keypairBytes?: number[]; privateKeyBase58?: string } | number[];
       if (Array.isArray(parsed)) {
-        const bytes = new Uint8Array(parsed as number[]);
+        const bytes = new Uint8Array(parsed);
         signer = await createKeyPairSignerFromBytes(bytes);
-        base58PrivateKey = getBase58Encoder().encode(bytes);
+        base58PrivateKey = getBase58Decoder().decode(bytes);
       } else if (parsed.keypairBytes) {
-        const bytes = new Uint8Array(parsed.keypairBytes as number[]);
+        const bytes = new Uint8Array(parsed.keypairBytes);
         signer = await createKeyPairSignerFromBytes(bytes);
-        base58PrivateKey = parsed.privateKeyBase58 || getBase58Encoder().encode(bytes);
+        base58PrivateKey = parsed.privateKeyBase58 || getBase58Decoder().decode(bytes);
       } else {
         throw new Error('Unrecognized format, regenerating');
       }
@@ -36,14 +37,14 @@ async function generateOrGetHotWallet(): Promise<void> {
   }
 
   // Generate extractable standard Ed25519 keypair
-  const keyPair = (await crypto.subtle.generateKey(
+  const keyPair = (await globalThis.crypto.subtle.generateKey(
     { name: 'Ed25519' },
     true,
     ['sign', 'verify']
-  )) as CryptoKeyPair;
+  )) as { privateKey: Parameters<typeof globalThis.crypto.subtle.exportKey>[1]; publicKey: Parameters<typeof globalThis.crypto.subtle.exportKey>[1] };
 
-  const rawPrivate = new Uint8Array(await crypto.subtle.exportKey('pkcs8', keyPair.privateKey));
-  const rawPublic = new Uint8Array(await crypto.subtle.exportKey('raw', keyPair.publicKey));
+  const rawPrivate = new Uint8Array(await globalThis.crypto.subtle.exportKey('pkcs8', keyPair.privateKey));
+  const rawPublic = new Uint8Array(await globalThis.crypto.subtle.exportKey('raw', keyPair.publicKey));
   
   // Standard 64-byte Solana keypair: 32 bytes seed + 32 bytes pubkey
   const keypair64 = new Uint8Array(64);

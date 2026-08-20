@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { MainnetPoolRegistry } from '@solana-arbitrage/solana';
-import { Address } from '@solana/kit';
+import { Address, Rpc, SolanaRpcApi } from '@solana/kit';
 
 describe('MainnetPoolRegistry', () => {
   it('should initialize with verified Raydium and Orca SOL/USDC pools', () => {
@@ -36,13 +36,13 @@ describe('MainnetPoolRegistry', () => {
     };
 
     const exists = await registry.verifyPoolExists(
-      mockRpc as any,
+      mockRpc as unknown as Rpc<SolanaRpcApi>,
       '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2' as Address
     );
     expect(exists).toBe(true);
 
     const data = await registry.fetchPoolAccountData(
-      mockRpc as any,
+      mockRpc as unknown as Rpc<SolanaRpcApi>,
       '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2' as Address
     );
     expect(data).toBeInstanceOf(Uint8Array);
