@@ -204,16 +204,16 @@ export default function DashboardPage(): JSX.Element {
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <div
             style={{
-              width: '40px',
-              height: '40px',
-              borderRadius: '10px',
-              background: 'linear-gradient(135deg, #00f0ff, #9d4edd)',
+              width: '36px',
+              height: '36px',
+              borderRadius: '8px',
+              background: '#238636',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
-            <Zap size={22} color="#0a0c10" />
+            <Zap size={20} color="#ffffff" />
           </div>
           <div>
             <h1 style={{ fontSize: '1.25rem', fontWeight: 700, letterSpacing: '-0.02em' }}>
